@@ -10,7 +10,7 @@ show_config() {
   if [ "${OFFICIAL}" = "yes" ]; then
     config_message+="(official)"
   else
-    config_message+="(cpm)"
+    config_message+="(U3k)"
   fi
   config_message+="\n ${dashes}${dashes}${dashes}"
 

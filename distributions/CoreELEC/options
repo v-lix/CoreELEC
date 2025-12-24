@@ -6,9 +6,9 @@
 # short project description
   DESCRIPTION="CoreELEC is a fast and user-friendly Kodi Entertainment Center distribution."
 
-BUILDER_NAME="cpm"
-ORIGIN_URL="https://github.com/cpm-code/CoreELEC"
-BUG_REPORT_URL="https://github.com/cpm-code/CoreELEC"
+BUILDER_NAME="U3k"
+ORIGIN_URL="https://github.com/U3knOwn/CoreELEC"
+BUG_REPORT_URL="https://github.com/U3knOwn/CoreELEC"
 
 ### USER INTERFACE SETTINGS ###
 
