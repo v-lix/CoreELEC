@@ -2,27 +2,46 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="libarchive"
-PKG_VERSION="3.7.3"
-PKG_SHA256="63e7a7174638fc7d6b79b4c8b0ad954e0f4f45abe7239c1ecb200232aa9a43d2"
+PKG_VERSION="3.8.4"
+PKG_SHA256="c7b847b57feacf5e182f4d14dd6cae545ac6843d55cb725f58e107cdf1c9ad73"
 PKG_LICENSE="GPL"
 PKG_SITE="https://www.libarchive.org"
 PKG_URL="https://www.libarchive.org/downloads/${PKG_NAME}-${PKG_VERSION}.tar.xz"
-PKG_DEPENDS_HOST="toolchain:host"
-PKG_DEPENDS_TARGET="toolchain"
+PKG_DEPENDS_HOST="cmake:host ninja:host"
+PKG_DEPENDS_TARGET="cmake:host gcc:host bzip2 lz4 lzo openssl pcre2 xz zlib zstd"
 PKG_SHORTDESC="A multi-format archive and compression library."
 
 PKG_CMAKE_OPTS_TARGET="-DCMAKE_POSITION_INDEPENDENT_CODE=1 \
-                       -DENABLE_EXPAT=0 \
-                       -DENABLE_ICONV=0 \
-                       -DENABLE_LIBXML2=0 \
-                       -DENABLE_LZO=1 \
-                       -DENABLE_TEST=0 \
-                       -DENABLE_COVERAGE=0 \
-                       -DENABLE_WERROR=0"
-
-post_makeinstall_target() {
-  rm -rf ${INSTALL}
-
-  # delete the shared library as we only want static
-  rm ${SYSROOT_PREFIX}/usr/lib/libarchive.so*
-}
+                       -DBUILD_SHARED_LIBS=OFF \
+                       -DENABLE_ACL=ON \
+                       -DENABLE_BZip2=ON \
+                       -DENABLE_CAT=OFF \
+                       -DENABLE_CAT_SHARED=FALSE \
+                       -DENABLE_CNG=ON \
+                       -DENABLE_COVERAGE=FALSE \
+                       -DENABLE_CPIO=OFF \
+                       -DENABLE_CPIO_SHARED=FALSE \
+                       -DENABLE_EXPAT=OFF \
+                       -DENABLE_ICONV=OFF \
+                       -DENABLE_INSTALL=ON \
+                       -DENABLE_LIBB2=OFF \
+                       -DENABLE_LIBGCC=ON \
+                       -DENABLE_LIBXML2=OFF \
+                       -DENABLE_LZ4=ON \
+                       -DENABLE_LZMA=ON \
+                       -DENABLE_LZO=ON \
+                       -DENABLE_MBEDTLS=OFF \
+                       -DENABLE_NETTLE=OFF \
+                       -DENABLE_OPENSSL=ON \
+                       -DENABLE_PCRE2POSIX=ON \
+                       -DENABLE_PCREPOSIX=OFF \
+                       -DENABLE_TAR=OFF \
+                       -DENABLE_TAR_SHARED=FALSE \
+                       -DENABLE_TEST=OFF \
+                       -DENABLE_UNZIP=OFF \
+                       -DENABLE_UNZIP_SHARED=FALSE \
+                       -DENABLE_WERROR=0 \
+                       -DENABLE_XATTR=ON \
+                       -DENABLE_ZLIB=ON \
+                       -DENABLE_ZSTD=ON \
+                       -DPOSIX_REGEX_LIB=LIBPCRE2POSIX"

@@ -4,13 +4,14 @@
 # Copyright (C) 2022-present Team CoreELEC (https://coreelec.org)
 
 PKG_NAME="pygobject"
-PKG_VERSION="3.46.0"
-PKG_SHA256="426008b2dad548c9af1c7b03b59df0440fde5c33f38fb5406b103a43d653cafc"
+PKG_VERSION="3.54.3"
+PKG_SHA256="a8da09134a0f7d56491cf2412145e35aa74e91d760e8f337096a1cda0b92bae7"
 PKG_ARCH="any"
 PKG_LICENSE="LGPL"
 PKG_SITE="http://www.pygtk.org/"
-PKG_URL="http://ftp.gnome.org/pub/GNOME/sources/pygobject/$(get_pkg_version_maj_min)/${PKG_NAME}-${PKG_VERSION}.tar.xz"
-PKG_DEPENDS_TARGET="toolchain Python3 glib libffi gobject-introspection pgi"
+PKG_URL="http://ftp.gnome.org/pub/GNOME/sources/pygobject/$(get_pkg_version_maj_min)/${PKG_NAME}-${PKG_VERSION}.tar.gz"
+PKG_DEPENDS_TARGET="toolchain Python3 glib libffi pgi"
+PKG_NEED_UNPACK="$(get_pkg_directory glib) $(get_build_dir glib)"
 PKG_LONGDESC="A convenient wrapper for the GObject+ library for use in Python programs."
 PKG_TOOLCHAIN="meson"
 

@@ -3,11 +3,11 @@
 # Copyright (C) 2019-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="libxkbcommon"
-PKG_VERSION="1.6.0"
-PKG_SHA256="0edc14eccdd391514458bc5f5a4b99863ed2d651e4dd761a90abf4f46ef99c2b"
+PKG_VERSION="1.13.0"
+PKG_SHA256="cd9367eec501867dfe7ddc3f6b18a026f2a2844a89d19108448d376cb849c9ed"
 PKG_LICENSE="MIT"
 PKG_SITE="https://xkbcommon.org"
-PKG_URL="https://xkbcommon.org/download/${PKG_NAME}-${PKG_VERSION}.tar.xz"
+PKG_URL="https://github.com/xkbcommon/libxkbcommon/archive/refs/tags/xkbcommon-${PKG_VERSION}.tar.gz"
 PKG_DEPENDS_TARGET="toolchain xkeyboard-config libxml2"
 PKG_LONGDESC="xkbcommon is a library to handle keyboard descriptions."
 

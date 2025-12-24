@@ -111,7 +111,7 @@ if [ -z "${PKG_TOOLCHAIN}" -o "${PKG_TOOLCHAIN}" = "auto" ]; then
   fi
   _auto_toolchain=" (auto-detect)"
 fi
-if ! listcontains "meson cmake cmake-make configure ninja make autotools manual" "${PKG_TOOLCHAIN}"; then
+if ! listcontains "meson cmake cmake-make configure ninja make autotools manual python-flit python" "${PKG_TOOLCHAIN}"; then
   die "$(print_color "CLR_ERROR" "ERROR:") unknown toolchain ${PKG_TOOLCHAIN}"
 fi
 build_msg "CLR_TOOLCHAIN" "TOOLCHAIN" "${PKG_TOOLCHAIN}${_auto_toolchain}"
@@ -139,8 +139,7 @@ else
   MESON_BUILD_TYPE="plain"
 fi
 
-CMAKE_GENERATOR_NINJA="-GNinja \
-                       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+CMAKE_GENERATOR_NINJA="-GNinja"
 
 # configure TARGET build defaults
 TARGET_CONFIGURE_OPTS="--host=${TARGET_NAME} \
@@ -151,9 +150,10 @@ TARGET_CONFIGURE_OPTS="--host=${TARGET_NAME} \
                        --sysconfdir=/etc \
                        --libdir=/usr/lib \
                        --libexecdir=/usr/lib \
-                       --localstatedir=/var \
-                       --disable-static \
-                       --enable-shared"
+                       --localstatedir=/var"
+if flag_enabled "cfg-libs" "yes"; then
+  TARGET_CONFIGURE_OPTS+=" --disable-static --enable-shared"
+fi
 
 TARGET_CMAKE_OPTS="-DCMAKE_TOOLCHAIN_FILE=${CMAKE_CONF} \
                    -DCMAKE_INSTALL_PREFIX=/usr \
@@ -180,9 +180,10 @@ HOST_CONFIGURE_OPTS="--host=${HOST_NAME} \
                      --sbindir=${TOOLCHAIN}/sbin \
                      --sysconfdir=${TOOLCHAIN}/etc \
                      --libexecdir=${TOOLCHAIN}/lib \
-                     --localstatedir=${TOOLCHAIN}/var \
-                     --disable-static \
-                     --enable-shared"
+                     --localstatedir=${TOOLCHAIN}/var"
+if flag_enabled "cfg-libs:host" "yes"; then
+  HOST_CONFIGURE_OPTS+=" --disable-static --enable-shared"
+fi
 
 HOST_CMAKE_OPTS="${CMAKE_GENERATOR} \
                  -DCMAKE_TOOLCHAIN_FILE=${CMAKE_CONF} \
@@ -304,19 +305,19 @@ else
     # cmake builds with ninja
     "cmake:target")
       echo "Executing (target): cmake ${CMAKE_GENERATOR_NINJA} ${TARGET_CMAKE_OPTS} ${PKG_CMAKE_OPTS_TARGET} ${PKG_CMAKE_SCRIPT%/*}" | tr -s " "
-      cmake ${CMAKE_GENERATOR_NINJA} ${TARGET_CMAKE_OPTS} ${PKG_CMAKE_OPTS_TARGET} ${PKG_CMAKE_SCRIPT%/*}
+      CMAKE_EXPORT_COMPILE_COMMANDS=1 cmake ${CMAKE_GENERATOR_NINJA} ${TARGET_CMAKE_OPTS} ${PKG_CMAKE_OPTS_TARGET} ${PKG_CMAKE_SCRIPT%/*}
       ;;
     "cmake:host")
       echo "Executing (host): cmake ${CMAKE_GENERATOR_NINJA} ${HOST_CMAKE_OPTS} ${PKG_CMAKE_OPTS_HOST} ${PKG_CMAKE_SCRIPT%/*}" | tr -s " "
-      cmake ${CMAKE_GENERATOR_NINJA} ${HOST_CMAKE_OPTS} ${PKG_CMAKE_OPTS_HOST} ${PKG_CMAKE_SCRIPT%/*}
+      CMAKE_EXPORT_COMPILE_COMMANDS=1 cmake ${CMAKE_GENERATOR_NINJA} ${HOST_CMAKE_OPTS} ${PKG_CMAKE_OPTS_HOST} ${PKG_CMAKE_SCRIPT%/*}
       ;;
     "cmake:init")
       echo "Executing (init): cmake ${CMAKE_GENERATOR_NINJA} ${INIT_CMAKE_OPTS} ${PKG_CMAKE_OPTS_INIT} ${PKG_CMAKE_SCRIPT%/*}" | tr -s " "
-      cmake ${CMAKE_GENERATOR_NINJA} ${INIT_CMAKE_OPTS} ${PKG_CMAKE_OPTS_INIT} ${PKG_CMAKE_SCRIPT%/*}
+      CMAKE_EXPORT_COMPILE_COMMANDS=1 cmake ${CMAKE_GENERATOR_NINJA} ${INIT_CMAKE_OPTS} ${PKG_CMAKE_OPTS_INIT} ${PKG_CMAKE_SCRIPT%/*}
       ;;
     "cmake:bootstrap")
       echo "Executing (bootstrap): cmake ${CMAKE_GENERATOR_NINJA} ${BOOTSTRAP_CMAKE_OPTS} ${PKG_CMAKE_OPTS_BOOTSTRAP} ${PKG_CMAKE_SCRIPT%/*}" | tr -s " "
-      cmake ${CMAKE_GENERATOR_NINJA} ${BOOTSTRAP_CMAKE_OPTS} ${PKG_CMAKE_OPTS_BOOTSTRAP} ${PKG_CMAKE_SCRIPT%/*}
+      CMAKE_EXPORT_COMPILE_COMMANDS=1 cmake ${CMAKE_GENERATOR_NINJA} ${BOOTSTRAP_CMAKE_OPTS} ${PKG_CMAKE_OPTS_BOOTSTRAP} ${PKG_CMAKE_SCRIPT%/*}
       ;;
 
     # cmake builds with make
@@ -403,6 +404,23 @@ else
       echo "Executing (bootstrap): make ${PKG_MAKE_OPTS_BOOTSTRAP}" | tr -s " "
       make ${PKG_MAKE_OPTS_BOOTSTRAP}
       ;;
+
+    # python builds
+    "python-flit:target")
+      die "$(print_color "CLR_ERROR" "ERROR:") toolchain python-flit should not be used for target!"
+      ;;
+    "python-flit:host")
+      echo "Executing (host): python3 -m flit_core.wheel"
+      DONT_BUILD_LEGACY_PYC=1 python3 -m flit_core.wheel
+      ;;
+    "python:target")
+      echo "Executing (target): python3 -m build -n -w -x ${PKG_PYTHON_OPTS_TARGET}" | tr -s " "
+      python_target_env python3 -m build -n -w -x ${PKG_PYTHON_OPTS_TARGET}
+      ;;
+    "python:host")
+      echo "Executing (host): python3 -m build -n -w -x ${PKG_PYTHON_OPTS_HOST}" | tr -s " "
+      DONT_BUILD_LEGACY_PYC=1 python3 -m build -n -w -x ${PKG_PYTHON_OPTS_HOST}
+      ;;
   esac
 fi
 
@@ -461,6 +479,17 @@ else
       ;;
     "configure:bootstrap"|"cmake-make:bootstrap"|"autotools:bootstrap"|"make:bootstrap")
       make install ${PKG_MAKEINSTALL_OPTS_BOOTSTRAP}
+      ;;
+
+    # python builds
+    "python-flit:target")
+      die "$(print_color "CLR_ERROR" "ERROR:") toolchain python-flit should not be used for target!"
+      ;;
+    "python:target")
+      python3 -m installer --overwrite-existing dist/*.whl -d ${INSTALL} -p /usr
+      ;;
+    "python-flit:host" | "python:host")
+      python3 -m installer --overwrite-existing dist/*.whl
       ;;
   esac
 fi
