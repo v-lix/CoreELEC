@@ -4,7 +4,7 @@
 # Copyright (C) 2020-present Team CoreELEC (https://coreelec.tv)
 
 PKG_NAME="kodi"
-PKG_VERSION="aml-4.9-21.3"
+PKG_VERSION="aml-4.9-21.3-python"
 PKG_LICENSE="GPL"
 PKG_SITE="http://www.kodi.tv"
 PKG_URL="https://github.com/U3knOwn/xbmc/archive/refs/heads/${PKG_VERSION}.tar.gz"
