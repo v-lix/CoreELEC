@@ -6,9 +6,9 @@
 # short project description
   DESCRIPTION="LibreELEC is a fast and user-friendly Kodi Entertainment Center distribution."
 
-BUILDER_NAME="U3k"
-ORIGIN_URL="https://github.com/U3knOwn/CoreELEC"
-BUG_REPORT_URL="https://github.com/U3knOwn/CoreELEC"
+BUILDER_NAME="p3i"
+ORIGIN_URL="https://github.com/pannal/CoreELEC"
+BUG_REPORT_URL="https://github.com/pannal/CoreELEC"
 
 ### USER INTERFACE SETTINGS ###
 
