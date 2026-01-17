@@ -45,7 +45,7 @@ BUG_REPORT_URL="https://github.com/U3knOwn/CoreELEC"
   HARDENING_SUPPORT="no"
 
 # Default supported get handlers (archive, git, file etc.)
-  GET_HANDLER_SUPPORT="archive"
+  GET_HANDLER_SUPPORT="archive file"
 
 # use local ccache on build host, if available, for early package
 # builds before ccache has been built

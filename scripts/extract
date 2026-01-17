@@ -11,11 +11,12 @@ if [ -z "${2}" ]; then
 fi
 
 [ -z "${PKG_URL}" -o -z "${PKG_SOURCE_NAME}" ] && die "${PKG_NAME}: PKG_URL or PKG_SOURCE_NAME undefined"
-[ ! -d "${SOURCES}/${1}" ] && die "${PKG_NAME}: ${SOURCES}/${1} not found"
+# Skip sources directory check for file:// URLs (local packages)
+[[ ! "${PKG_URL}" =~ ^file:// ]] && [ ! -d "${SOURCES}/${1}" ] && die "${PKG_NAME}: ${SOURCES}/${1} not found"
 [ ! -d "${2}" ] && die "${PKG_NAME}: target ${2} not found"
 
 if [[ "${PKG_URL}" =~ ^file:// ]]; then
-  FULL_SOURCE_PATH="${PKG_SOURCE_NAME}"
+  FULL_SOURCE_PATH="${PKG_URL#file://}"
 else
   FULL_SOURCE_PATH="${SOURCES}/${1}/${PKG_SOURCE_NAME}"
 fi

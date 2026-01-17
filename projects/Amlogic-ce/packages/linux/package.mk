@@ -17,9 +17,10 @@ PKG_PATCH_DIRS="$LINUX"
 
 case "$LINUX" in
   amlogic-4.9)
-    PKG_VERSION="latest"
-    PKG_URL="https://github.com/U3knOwn/linux-amlogic/archive/refs/heads/amlogic-4.9-20.tar.gz"
-    PKG_SOURCE_NAME="linux-$LINUX-$PKG_VERSION.tar.gz"
+    PKG_VERSION="amlogic-4.9-20"
+    # Using local linux-amlogic checkout for development
+    PKG_URL="file://${HOME}/linux-amlogic-local"
+    PKG_SOURCE_NAME="linux-amlogic-local"
     PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET aml-dtbtools:host"
     PKG_BUILD_PERF="no"
     PKG_GIT_BRANCH="amlogic-4.9-20"

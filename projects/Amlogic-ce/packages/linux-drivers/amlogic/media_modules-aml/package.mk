@@ -2,9 +2,12 @@
 # Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
 
 PKG_NAME="media_modules-aml"
+PKG_VERSION="amlogic-4.9.269"
 PKG_LICENSE="GPL"
 PKG_SITE="https://coreelec.org"
-PKG_URL="https://github.com/U3knOwn/media_modules-aml/archive/refs/heads/amlogic-4.9.269.tar.gz"
+# Using local media_modules-aml checkout for development
+PKG_URL="file://${ROOT}/sources/media_modules-aml/media_modules-aml-local"
+PKG_SOURCE_NAME="media_modules-aml-local"
 PKG_DEPENDS_TARGET="toolchain linux"
 PKG_NEED_UNPACK="$LINUX_DEPENDS"
 PKG_LONGDESC="$PKG_NAME: Linux driver"
