@@ -8,7 +8,7 @@ PKG_SITE="https://coreelec.org"
 # Using local service.coreelec.settings checkout for development
 PKG_URL="file://${ROOT}/sources/service.coreelec.settings/service.coreelec.settings-local"
 PKG_SOURCE_NAME="service.coreelec.settings-local"
-PKG_DEPENDS_TARGET="toolchain Python3 connman pygobject dbus-python"
+PKG_DEPENDS_TARGET="toolchain Python3 connman dbussy"
 PKG_LONGDESC="CoreELEC-settings: is a settings dialog for CoreELEC"
 
 PKG_MAKE_OPTS_TARGET="DISTRONAME=${DISTRONAME} ADDON_VERSION=${ADDON_VERSION} ROOT_PASSWORD=${ROOT_PASSWORD}"
