@@ -4,7 +4,7 @@
 PKG_NAME="CoreELEC-settings"
 PKG_LICENSE="GPL"
 PKG_SITE="https://coreelec.org"
-PKG_URL="https://github.com/U3knOwn/service.coreelec.settings/archive/refs/heads/coreelec-21-ng.tar.gz"
+PKG_URL="https://github.com/pannal/service.coreelec.settings/archive/refs/heads/coreelec-21-ng.tar.gz"
 PKG_DEPENDS_TARGET="toolchain Python3 connman pygobject dbus-python"
 PKG_LONGDESC="CoreELEC-settings: is a settings dialog for CoreELEC"
 

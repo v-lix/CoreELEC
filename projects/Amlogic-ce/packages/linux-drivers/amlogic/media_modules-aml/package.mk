@@ -4,7 +4,7 @@
 PKG_NAME="media_modules-aml"
 PKG_LICENSE="GPL"
 PKG_SITE="https://coreelec.org"
-PKG_URL="https://github.com/U3knOwn/media_modules-aml/archive/refs/heads/amlogic-4.9.269.tar.gz"
+PKG_URL="https://github.com/pannal/media_modules-aml/archive/refs/heads/amlogic-4.9.269.tar.gz"
 PKG_DEPENDS_TARGET="toolchain linux"
 PKG_NEED_UNPACK="$LINUX_DEPENDS"
 PKG_LONGDESC="$PKG_NAME: Linux driver"
