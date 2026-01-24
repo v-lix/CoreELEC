@@ -25,7 +25,7 @@ As my Github profile isn't public at the moment, here are the significant links 
 
 * [Issue-tracker](https://github.com/pannal/CoreELEC/issues)
 * [Discussions](https://github.com/pannal/CoreELEC/discussions)
-* [TRaSH-Guides #ugoos-mediaplayer and #support channels](https://trash-guides.info/discord)
+* **Discord:** [TRaSH-Guides #ugoos-mediaplayer and #support channels](https://trash-guides.info/discord)
 
 ## Thanks
 Massive thanks to all the testers, especially the ones from [TRaSH-Guides #ugoos-mediaplayer](https://trash-guides.info/discord), who initially spiked my interest in continuing Jamal's work by exposing potential long standing UI issues in Kodi.
