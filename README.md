@@ -13,19 +13,19 @@ It's directly forked off of [U3k B11](https://github.com/CE-Repo/xbmc/releases/t
 * Python 3.13.11
 * FFMPEG 8.0.1
 
-## Links
-As my Github profile isn't public at the moment, here are the significant links for you:
-* [Releases](https://github.com/pannal/CoreELEC/releases)
-* [XBMC/Kodi base repository](https://github.com/pannal/xbmc/)
-* [CoreELEC Settings Addon repository](https://github.com/pannal/service.coreelec.settings)
-* [Linux Amlogic repository](https://github.com/pannal/linux-amlogic)
-* [Amlogic media modules repository](https://github.com/pannal/media_modules-aml)
-
 ## Issues & Support
 
 * [Issue-tracker](https://github.com/pannal/CoreELEC/issues)
 * [Discussions](https://github.com/pannal/CoreELEC/discussions)
 * **Discord:** [TRaSH-Guides #ugoos-mediaplayer and #support channels](https://trash-guides.info/discord)
+
+## Links
+As my Github profile isn't public at the moment, here are the significant source-code repository links for you, if you're interested:
+* [Releases](https://github.com/pannal/CoreELEC/releases)
+* [XBMC/Kodi base repository](https://github.com/pannal/xbmc/)
+* [CoreELEC Settings Addon repository](https://github.com/pannal/service.coreelec.settings)
+* [Linux Amlogic repository](https://github.com/pannal/linux-amlogic)
+* [Amlogic media modules repository](https://github.com/pannal/media_modules-aml)
 
 ## Thanks
 Massive thanks to all the testers, especially the ones from [TRaSH-Guides #ugoos-mediaplayer](https://trash-guides.info/discord), who initially spiked my interest in continuing Jamal's work by exposing potential long standing UI issues in Kodi.
