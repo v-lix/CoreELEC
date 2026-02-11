@@ -12,10 +12,14 @@ PKG_DEPENDS_TARGET="toolchain alsa-lib dbus glib libcap libsndfile libtool opens
 PKG_LONGDESC="PulseAudio is a sound system for POSIX OSes, meaning that it is a proxy for your sound applications."
 
 if [ "${BLUETOOTH_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" sbc bluez"
+  PKG_DEPENDS_TARGET+=" sbc bluez gstreamer gst-plugins-bad"
   PKG_PULSEAUDIO_BLUETOOTH="-Dbluez5=enabled"
+  PKG_PULSEAUDIO_BT_GSTREAMER="-Dbluez5-gstreamer=enabled"
+  PKG_PULSEAUDIO_GSTREAMER="-Dgstreamer=enabled"
 else
   PKG_PULSEAUDIO_BLUETOOTH="-Dbluez5=disabled"
+  PKG_PULSEAUDIO_BT_GSTREAMER="-Dbluez5-gstreamer=disabled"
+  PKG_PULSEAUDIO_GSTREAMER="-Dgstreamer=disabled"
 fi
 
 if [ "${AVAHI_DAEMON}" = "yes" ]; then
@@ -45,7 +49,7 @@ PKG_MESON_OPTS_TARGET="-Ddaemon=true \
                        -Dasyncns=disabled \
                        ${PKG_PULSEAUDIO_AVAHI} \
                        ${PKG_PULSEAUDIO_BLUETOOTH} \
-                       -Dbluez5-gstreamer=disabled \
+                       ${PKG_PULSEAUDIO_BT_GSTREAMER} \
                        -Dbluez5-native-headset=false \
                        -Dbluez5-ofono-headset=false \
                        -Ddbus=enabled \
@@ -53,7 +57,7 @@ PKG_MESON_OPTS_TARGET="-Ddaemon=true \
                        -Dfftw=disabled \
                        -Dglib=enabled \
                        -Dgsettings=disabled \
-                       -Dgstreamer=disabled \
+                       ${PKG_PULSEAUDIO_GSTREAMER} \
                        -Dgtk=disabled \
                        -Dhal-compat=false \
                        -Dipv6=true \
