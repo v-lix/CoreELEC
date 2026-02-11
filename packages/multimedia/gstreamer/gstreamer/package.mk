@@ -13,7 +13,7 @@ PKG_LONGDESC="GStreamer open-source multimedia framework core library"
 pre_configure_target() {
   PKG_MESON_OPTS_TARGET="-Dgst_debug=false \
                          -Dgst_parse=true \
-                         -Dregistry=false \
+                         -Dregistry=true \
                          -Dtracer_hooks=false \
                          -Doption-parsing=true \
                          -Dpoisoning=false \
