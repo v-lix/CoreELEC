@@ -12,10 +12,11 @@ PKG_DEPENDS_TARGET="toolchain alsa-lib dbus glib libcap libsndfile libtool opens
 PKG_LONGDESC="PulseAudio is a sound system for POSIX OSes, meaning that it is a proxy for your sound applications."
 
 if [ "${BLUETOOTH_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" sbc bluez gstreamer gst-plugins-bad"
+  PKG_DEPENDS_TARGET+=" sbc bluez"
   PKG_PULSEAUDIO_BLUETOOTH="-Dbluez5=enabled"
-  PKG_PULSEAUDIO_BT_GSTREAMER="-Dbluez5-gstreamer=enabled"
-  PKG_PULSEAUDIO_GSTREAMER="-Dgstreamer=enabled"
+  # Disable GStreamer support - pulseaudio-modules-bt will provide codecs
+  PKG_PULSEAUDIO_BT_GSTREAMER="-Dbluez5-gstreamer=disabled"
+  PKG_PULSEAUDIO_GSTREAMER="-Dgstreamer=disabled"
 else
   PKG_PULSEAUDIO_BLUETOOTH="-Dbluez5=disabled"
   PKG_PULSEAUDIO_BT_GSTREAMER="-Dbluez5-gstreamer=disabled"
