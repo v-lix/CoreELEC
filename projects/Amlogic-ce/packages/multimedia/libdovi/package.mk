@@ -18,8 +18,8 @@
 #   export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER="$CE_CC"
 #
 #   # Download, extract, and patch:
-#   wget https://github.com/quietvoid/dovi_tool/archive/libdovi-3.3.1.tar.gz
-#   tar xf libdovi-3.3.1.tar.gz && cd dovi_tool-libdovi-3.3.1
+#   wget https://github.com/quietvoid/dovi_tool/archive/libdovi-3.3.2.tar.gz
+#   tar xf libdovi-3.3.2.tar.gz && cd dovi_tool-libdovi-3.3.2
 #   patch -p1 < /path/to/source-patches/01-libdovi-store-cmv29-payload-end-bit.patch
 #
 #   # Build and install to staging directory:
@@ -28,24 +28,31 @@
 #     --profile release --prefix /usr --destdir /tmp/libdovi-install
 #
 #   # Package with required prefix (must match libdovi-${ARCH}-${PKG_VERSION}):
-#   mkdir -p /tmp/libdovi-pkg/libdovi-arm-3.3.1
-#   cp -a /tmp/libdovi-install/usr /tmp/libdovi-pkg/libdovi-arm-3.3.1/
-#   tar cJf libdovi-arm-3.3.1.tar.xz -C /tmp/libdovi-pkg libdovi-arm-3.3.1
-#   cp libdovi-arm-3.3.1.tar.xz <CE_SRC>/sources/libdovi/
-#   # Update PKG_SHA256 for "arm" below with: sha256sum libdovi-arm-3.3.1.tar.xz
+#   VER=3.3.2  # match PKG_VERSION below
+#   mkdir -p /tmp/libdovi-pkg/libdovi-arm-${VER}
+#   cp -a /tmp/libdovi-install/usr /tmp/libdovi-pkg/libdovi-arm-${VER}/
+#   tar cJf libdovi-arm-${VER}.tar.xz -C /tmp/libdovi-pkg libdovi-arm-${VER}
+#
+#   # Install tarball + sidecar files (CE skips download when all three exist):
+#   cp libdovi-arm-${VER}.tar.xz <CE_SRC>/sources/libdovi/
+#   sha256sum libdovi-arm-${VER}.tar.xz | cut -d' ' -f1 \
+#     > <CE_SRC>/sources/libdovi/libdovi-arm-${VER}.tar.xz.sha256
+#   echo "https://sources.coreelec.org/libdovi-arm-${VER}.tar.xz" \
+#     > <CE_SRC>/sources/libdovi/libdovi-arm-${VER}.tar.xz.url
+#   # Update PKG_SHA256 for "arm" below with the sha256 value
 
 PKG_NAME="libdovi"
-PKG_VERSION="3.3.1"
+PKG_VERSION="3.3.2"
 PKG_SITE="https://github.com/quietvoid/dovi_tool"
 PKG_DEPENDS_TARGET="toolchain"
 if [ "${BUILD_FROM_SRC}" = "yes" ]; then
-  PKG_SHA256="4cd7a4c418fd8af1da13278ce7524c15b7fdf61e1fe53663aa291c68c5062777"
+  PKG_SHA256="8ccb1922d7dbb57bc4f2c15c10b90c462f7a5f292efe317c116db923728dd3f1"
   PKG_URL="https://github.com/quietvoid/dovi_tool/archive/${PKG_NAME}-${PKG_VERSION}.tar.gz"
   PKG_DEPENDS_TARGET+=" cargo-c:host"
 else
   case "${TARGET_ARCH}" in
     "arm")
-      PKG_SHA256="7c0b0af11aa1919942ade07737d81cbb5b97ceb2d3220b68f87d58c034c181c3"
+      PKG_SHA256="fc8642b83d0713331cfc692997b30bc7f9b697210a2a6fcc2b96bdc26956d5b8"
       ;;
     "aarch64")
       PKG_SHA256="e6e0bb82198a58a58cd38bbb2a6d286ff9d024ad35f490ff4b127ea415521457"
