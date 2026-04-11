@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2023-present Team CoreELEC (https://coreelec.org)
 #
-# Rebuilding from source after patching libdovi:
+# Rebuilding the prebuilt tarball:
 #
-# The default prebuilt path uses a pre-compiled tarball. When source-patches/
-# modify the Rust source, the prebuilt must be regenerated:
+# The default path uses a pre-compiled tarball. To rebuild (e.g. after
+# upgrading to a new libdovi version or building from unreleased main):
 #
 #   CE_TOOLCHAIN="<CE_BUILD>/build.CoreELEC-Amlogic-ng.arm-21/toolchain"
 #   CE_CC="${CE_TOOLCHAIN}/bin/armv8a-libreelec-linux-gnueabihf-gcc"
@@ -17,10 +17,8 @@
 #   export AR_arm_unknown_linux_gnueabihf="$CE_AR"
 #   export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER="$CE_CC"
 #
-#   # Download, extract, and patch:
-#   wget https://github.com/quietvoid/dovi_tool/archive/libdovi-3.3.2.tar.gz
-#   tar xf libdovi-3.3.2.tar.gz && cd dovi_tool-libdovi-3.3.2
-#   patch -p1 < /path/to/source-patches/01-libdovi-store-cmv29-payload-end-bit.patch
+#   # Clone/download source:
+#   git clone https://github.com/quietvoid/dovi_tool.git && cd dovi_tool
 #
 #   # Build and install to staging directory:
 #   cargo cinstall --manifest-path dolby_vision/Cargo.toml \
@@ -28,7 +26,7 @@
 #     --profile release --prefix /usr --destdir /tmp/libdovi-install
 #
 #   # Package with required prefix (must match libdovi-${ARCH}-${PKG_VERSION}):
-#   VER=3.3.2  # match PKG_VERSION below
+#   VER=3.3.3  # match PKG_VERSION below
 #   mkdir -p /tmp/libdovi-pkg/libdovi-arm-${VER}
 #   cp -a /tmp/libdovi-install/usr /tmp/libdovi-pkg/libdovi-arm-${VER}/
 #   tar cJf libdovi-arm-${VER}.tar.xz -C /tmp/libdovi-pkg libdovi-arm-${VER}
@@ -42,7 +40,7 @@
 #   # Update PKG_SHA256 for "arm" below with the sha256 value
 
 PKG_NAME="libdovi"
-PKG_VERSION="3.3.2"
+PKG_VERSION="3.3.3"
 PKG_SITE="https://github.com/quietvoid/dovi_tool"
 PKG_DEPENDS_TARGET="toolchain"
 if [ "${BUILD_FROM_SRC}" = "yes" ]; then
@@ -52,7 +50,7 @@ if [ "${BUILD_FROM_SRC}" = "yes" ]; then
 else
   case "${TARGET_ARCH}" in
     "arm")
-      PKG_SHA256="fc8642b83d0713331cfc692997b30bc7f9b697210a2a6fcc2b96bdc26956d5b8"
+      PKG_SHA256="000f959b7f4827ba346fa8353424ecd2d53fe094b6ae3a460b3b4c1d1c3e2e4a"
       ;;
     "aarch64")
       PKG_SHA256="e6e0bb82198a58a58cd38bbb2a6d286ff9d024ad35f490ff4b127ea415521457"
