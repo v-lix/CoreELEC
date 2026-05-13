@@ -19,6 +19,7 @@ unpack() {
   cp $(kernel_path)/drivers/usb/storage/scsiglue.h   ${PKG_BUILD}/
   cp $(kernel_path)/drivers/usb/storage/unusual_uas.h ${PKG_BUILD}/
   cp $(kernel_path)/drivers/usb/storage/usb.h        ${PKG_BUILD}/
+  cat ${PKG_DIR}/extra_uas_entries.h >> ${PKG_BUILD}/unusual_uas.h
   echo "obj-m := uas.o" > ${PKG_BUILD}/Kbuild
 }
 
