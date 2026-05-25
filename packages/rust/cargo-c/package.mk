@@ -2,8 +2,8 @@
 # Copyright (C) 2023-present Team CoreELEC (https://coreelec.org)
 
 PKG_NAME="cargo-c"
-PKG_VERSION="v0.9.17"
-PKG_SHA256="95fcf50505516dfa6a941e666d1388810da9d7a9e1c623c09068faef5d50b3b9"
+PKG_VERSION="v0.10.22"
+PKG_SHA256="a7b00539437932f2a17a72b97d9c2142367a2d70ee20f9f1692a8b13c7255332"
 PKG_LICENSE="MIT"
 PKG_SITE="https://github.com/lu-zero/cargo-c"
 PKG_URL="https://github.com/lu-zero/cargo-c/archive/refs/tags/${PKG_VERSION}.tar.gz"
