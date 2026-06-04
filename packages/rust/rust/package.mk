@@ -2,8 +2,8 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="rust"
-PKG_VERSION="1.85.1"
-PKG_SHA256="0f2995ca083598757a8d9a293939e569b035799e070f419a686b0996fb94238a"
+PKG_VERSION="1.93.1"
+PKG_SHA256="4c230a44b3d9c9f3cef950943719f8380058d27c91fda5e36a9a947ef013e01f"
 PKG_LICENSE="MIT"
 PKG_SITE="https://www.rust-lang.org"
 PKG_URL="https://static.rust-lang.org/dist/rustc-${PKG_VERSION}-src.tar.gz"
@@ -33,7 +33,7 @@ configure_host() {
   esac
 
   cat >${PKG_BUILD}/config.toml  <<END
-change-id = 134650
+change-id = 148803
 
 [llvm]
 download-ci-llvm = false

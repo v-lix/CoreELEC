@@ -10,7 +10,7 @@ PKG_SITE="http://www.kodi.tv"
 # Using local xbmc checkout for development
 PKG_URL="file://${ROOT}/sources/kodi/xbmc-local"
 PKG_SOURCE_NAME="xbmc-local"
-PKG_DEPENDS_TARGET="toolchain JsonSchemaBuilder:host TexturePacker:host Python3 zlib systemd lzo pcre swig:host libass curl fontconfig fribidi tinyxml tinyxml2 libjpeg-turbo freetype libcdio taglib libxml2 libxslt rapidjson sqlite ffmpeg crossguid libfmt lirc libfstrcmp flatbuffers:host flatbuffers libudfread spdlog obu_util libdovi"
+PKG_DEPENDS_TARGET="toolchain JsonSchemaBuilder:host TexturePacker:host Python3 zlib systemd lzo pcre swig:host libass curl fontconfig fribidi tinyxml tinyxml2 libjpeg-turbo freetype libcdio taglib libxml2 libxslt rapidjson sqlite ffmpeg crossguid libfmt lirc libfstrcmp flatbuffers:host flatbuffers libudfread spdlog obu_util libdovi skin.p3i.estuary"
 PKG_DEPENDS_UNPACK="commons-lang3 commons-text groovy"
 PKG_DEPENDS_HOST="toolchain"
 PKG_LONGDESC="A free and open source cross-platform media player."
@@ -436,6 +436,39 @@ post_makeinstall_target() {
     fi
   else
     echo "WARNING: Could not fetch Don't Panic repository from pm4k.eu"
+  fi
+
+  # Download and install p3i repository from official source
+  # Dynamically fetch the latest version from p3irepo.pm4k.eu
+  P3I_FILE=$(curl -sL https://p3irepo.pm4k.eu | grep -oP 'repository\.p3i[^"]*\.zip' | head -1)
+  if [ -n "${P3I_FILE}" ]; then
+    P3I_URL="https://p3irepo.pm4k.eu/${P3I_FILE}"
+    P3I_ZIP="${BUILD}/repository.p3i.zip"
+    echo "Fetching p3i repository: ${P3I_FILE}"
+    curl -Lsf -o "${P3I_ZIP}" "${P3I_URL}"
+    if [ -f "${P3I_ZIP}" ]; then
+      unzip -q "${P3I_ZIP}" -d ${INSTALL}/usr/share/kodi/addons/
+      rm -f "${P3I_ZIP}"
+    fi
+  else
+    echo "WARNING: Could not fetch p3i repository from p3irepo.pm4k.eu"
+  fi
+
+  # Pre-install p3i seamless-branching helper service addon from p3i repo.
+  # Version is parsed from the repo's addons.xml so the latest zip is always picked.
+  P3I_SB_VERSION=$(curl -sL https://p3irepo.pm4k.eu/omega/zips/addons.xml | grep -oP 'id="service\.p3i\.sb"[^>]*version="\K[^"]+' | head -1)
+  if [ -n "${P3I_SB_VERSION}" ]; then
+    P3I_SB_FILE="service.p3i.sb-${P3I_SB_VERSION}.zip"
+    P3I_SB_URL="https://p3irepo.pm4k.eu/omega/zips/service.p3i.sb/${P3I_SB_FILE}"
+    P3I_SB_ZIP="${BUILD}/service.p3i.sb.zip"
+    echo "Fetching service.p3i.sb: ${P3I_SB_FILE}"
+    curl -Lsf -o "${P3I_SB_ZIP}" "${P3I_SB_URL}"
+    if [ -f "${P3I_SB_ZIP}" ]; then
+      unzip -q "${P3I_SB_ZIP}" -d ${INSTALL}/usr/share/kodi/addons/
+      rm -f "${P3I_SB_ZIP}"
+    fi
+  else
+    echo "WARNING: Could not determine service.p3i.sb version from p3irepo.pm4k.eu"
   fi
 
   mkdir -p ${INSTALL}/usr/share/kodi/config

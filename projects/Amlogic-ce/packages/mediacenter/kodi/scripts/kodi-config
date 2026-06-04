@@ -56,6 +56,12 @@ if [ "$(uname -m)" = "x86_64" ]; then
   echo "MALLOC_MMAP_THRESHOLD_=524288" >> /run/libreelec/kodi.conf
 else #arm
   echo "MALLOC_MMAP_THRESHOLD_=8192" >> /run/libreelec/kodi.conf
+  # Cap glibc arenas to curb secondary-arena fragmentation from heavy in-process
+  # Python (e.g. TMDb Helper widgets) on CPython 3.13 built --without-pymalloc.
+  # =8 is the RAM/UI-smoothness sweet spot on 6-core Amlogic (validated on AM6B);
+  # trim threshold returns freed main-arena memory to the OS without lock contention.
+  echo "MALLOC_ARENA_MAX=8" >> /run/libreelec/kodi.conf
+  echo "MALLOC_TRIM_THRESHOLD_=131072" >> /run/libreelec/kodi.conf
 fi
 
 if [ -f /storage/.config/kodi.conf ] ; then
