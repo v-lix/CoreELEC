@@ -50,7 +50,7 @@ if [ "${BUILD_FROM_SRC}" = "yes" ]; then
 else
   case "${TARGET_ARCH}" in
     "arm")
-      PKG_SHA256="d1caec483d6bebeebea414347d0244ced398ab7f4e237d90407e3683d453212a"
+      PKG_SHA256="8780b66331e0b71957874944c86434c6e8a1fc4b2ae89a2326135a3c3d92af3f"
       ;;
     "aarch64")
       PKG_SHA256="e6e0bb82198a58a58cd38bbb2a6d286ff9d024ad35f490ff4b127ea415521457"

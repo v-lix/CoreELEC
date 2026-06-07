@@ -1,4 +1,4 @@
-From 86a742a5fe22baa7268da6b7a191cccdf4de45f5 Mon Sep 17 00:00:00 2001
+From 17ebb13121a00e073a8d7b0a24b13e8098552b86 Mon Sep 17 00:00:00 2001
 From: pannal <1359593+pannal@users.noreply.github.com>
 Date: Sun, 7 Jun 2026 04:37:12 +0200
 Subject: [PATCH] capi: add dovi_rpu_remove_cmv40_metadata
@@ -12,14 +12,14 @@ dovi_rpu_remove_mapping convention.
 Consumer: CoreELEC/Kodi on Amlogic, for old DV TVs that fail to fall back
 from CMv4.0 and black-screen on CMv4.0 content.
 ---
- dolby_vision/src/capi.rs | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ dolby_vision/src/capi.rs | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
 diff --git a/dolby_vision/src/capi.rs b/dolby_vision/src/capi.rs
-index fba7ab9..d5286b8 100644
+index fba7ab9..619492a 100644
 --- a/dolby_vision/src/capi.rs
 +++ b/dolby_vision/src/capi.rs
-@@ -476,6 +476,36 @@ pub unsafe extern "C" fn dovi_rpu_add_cmv40_safe_default_metadata(ptr: *mut RpuO
+@@ -476,6 +476,35 @@ pub unsafe extern "C" fn dovi_rpu_add_cmv40_safe_default_metadata(ptr: *mut RpuO
      }
  }
  
@@ -43,8 +43,7 @@ index fba7ab9..d5286b8 100644
 +        match rpu.remove_cmv40_extension_metadata() {
 +            Ok(_) => 0,
 +            Err(e) => {
-+                opaque.error =
-+                    CString::new(format!("Failed removing CMv4.0 metadata: {e}")).ok();
++                opaque.error = CString::new(format!("Failed removing CMv4.0 metadata: {e}")).ok();
 +                -1
 +            }
 +        }
