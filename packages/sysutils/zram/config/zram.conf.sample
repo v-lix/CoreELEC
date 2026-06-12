@@ -10,3 +10,9 @@
 
 # Set to "yes" to enable, "no" to disable.
 #ZRAM_ENABLED="yes"
+
+# vm.page-cluster while zram swap is active: log2 of the pages read
+# per swap-in fault. zram has no seek cost, so readahead only adds
+# decompression latency; 0 (read exactly the faulting page) is best.
+# Set empty to keep the kernel default (3).
+#ZRAM_PAGE_CLUSTER="0"
