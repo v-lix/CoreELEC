@@ -11,7 +11,7 @@ p3i doesn't aim to reinvent the wheel, but ultimately, to replace the famous [CP
 It's directly forked off of [U3k B11](https://github.com/CE-Repo/xbmc/releases/tag/B11), so its core is:
 * Kodi Omega 21.3 with significant backports from Kodi 22 upstream
 * Python 3.13.11
-* FFMPEG 8.0.1
+* FFMPEG 8.1.2
 
 ## Issues & Support
 
