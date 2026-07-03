@@ -2,7 +2,7 @@
 # Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
 
 PKG_NAME="skin.p3i.estuary"
-PKG_VERSION="8.8.8"
+PKG_VERSION="8.8.15"
 PKG_LICENSE="CC-BY-SA-4.0"
 PKG_SITE="https://github.com/xbmc/skin.estuary/"
 # Using local skin checkout; ship raw sources and pack the XBT bundles at build
