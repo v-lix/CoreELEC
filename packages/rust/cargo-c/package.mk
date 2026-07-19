@@ -11,6 +11,10 @@ PKG_DEPENDS_HOST="cargo:host"
 PKG_LONGDESC="Use Cargo-c to build and install C-compatible libraries"
 PKG_TOOLCHAIN="manual"
 
+# no committed Cargo.lock upstream; a plain resolve picks latest crates whose
+# MSRV exceeds our pinned rustc, so prefer MSRV-compatible versions
+export CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS="fallback"
+
 make_host() {
   cargo build --release --manifest-path ${PKG_BUILD}/Cargo.toml
 }
