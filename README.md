@@ -13,6 +13,61 @@ It's directly forked off of [U3k B11](https://github.com/CE-Repo/xbmc/releases/t
 * Python 3.13.11
 * FFMPEG 8.1.2
 
+## Building
+
+p3i builds like stock CoreELEC, with two things you need to get right: the build target variables, and the local source checkouts the core packages build from.
+
+### PROJECT, DEVICE and ARCH
+
+The build system picks its target from environment variables. **With nothing set it defaults to `PROJECT=Amlogic-ce`, `DEVICE=Amlogic-ne`, `ARCH=aarch64`**, so a bare `make` builds Amlogic-ne, not the Amlogic-ng (arm) images p3i primarily targets (S922X devices like the Ugoos AM6b+).
+
+Every invocation needs the same variables: `make`, `./scripts/clean`, `./scripts/build`, all of them. Each PROJECT/DEVICE/ARCH combination is its own build tree, so a bare `./scripts/clean kodi` cleans the Amlogic-ne tree while your image builds in the Amlogic-ng one: you never actually cleaned.
+
+```sh
+# release image for Amlogic-ng (arm)
+PROJECT=Amlogic-ce DEVICE=Amlogic-ng ARCH=arm make release
+
+# clean/rebuild single packages in that same tree
+PROJECT=Amlogic-ce DEVICE=Amlogic-ng ARCH=arm ./scripts/clean kodi
+PROJECT=Amlogic-ce DEVICE=Amlogic-ng ARCH=arm ./scripts/build libdovi
+```
+
+### Setting the defaults permanently
+
+Export them from your shell so every command agrees:
+
+```sh
+# bash: ~/.bashrc — zsh: ~/.zshrc
+export PROJECT=Amlogic-ce
+export DEVICE=Amlogic-ng
+export ARCH=arm
+```
+
+```fish
+# fish: run once (universal variables), or put in ~/.config/fish/config.fish
+set -Ux PROJECT Amlogic-ce
+set -Ux DEVICE Amlogic-ng
+set -Ux ARCH arm
+```
+
+Don't use `~/.coreelec/options` for these three: the build system sources that file after the target defaults are resolved, so `DEVICE=Amlogic-ng` set there still leaves `ARCH=aarch64` and you end up with a broken hybrid build tree. That file is fine for build tweaks like `CONCURRENCY_MAKE_LEVEL`, not for target selection.
+
+### Local source checkouts (branch `coreelec-21_local`)
+
+Development happens on `coreelec-21_local`; `coreelec-21` carries the release states it is cut from. The core packages of this fork don't download release tarballs. Their `package.mk` points at a local working copy via a `file://` URL, and whatever is checked out there is what gets built. The build never pulls or resets these checkouts, so verify their state before packaging:
+
+| package.mk | builds from local checkout | source repo |
+|---|---|---|
+| `projects/Amlogic-ce/packages/mediacenter/kodi` | `sources/kodi/xbmc-local` | [pannal/xbmc](https://github.com/pannal/xbmc/) |
+| `projects/Amlogic-ce/packages/linux` | `$HOME/linux-amlogic-local` | [pannal/linux-amlogic](https://github.com/pannal/linux-amlogic) |
+| `projects/Amlogic-ce/packages/linux-drivers/amlogic/media_modules-aml` | `sources/media_modules-aml/media_modules-aml-local` | [pannal/media_modules-aml](https://github.com/pannal/media_modules-aml) |
+| `projects/Amlogic-ce/packages/mediacenter/CoreELEC-settings` | `sources/service.coreelec.settings/service.coreelec.settings-local` | [pannal/service.coreelec.settings](https://github.com/pannal/service.coreelec.settings) |
+| `projects/Amlogic-ce/packages/mediacenter/skin.p3i.estuary` | `sources/skin.p3i.estuary/skin.p3i.estuary-local` | bundled skin |
+
+Clone each repo to the listed path (the branch to check out follows from `PKG_VERSION`/`PKG_GIT_BRANCH` in the respective `package.mk`), or edit the `PKG_URL` in those files to point at your own checkouts.
+
+One-time note: the first build also bootstraps the rust toolchain (for `libdovi`), which adds roughly an hour of host compilation. Subsequent builds reuse it.
+
 ## Issues & Support
 
 * [Issue-tracker](https://github.com/pannal/CoreELEC/issues)
