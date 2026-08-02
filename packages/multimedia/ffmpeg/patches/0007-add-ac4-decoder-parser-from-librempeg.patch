@@ -1,131 +1,23 @@
-diff --git a/custom-edits.patch b/custom-edits.patch
-new file mode 100644
-index 0000000000..93140f778c
---- /dev/null
-+++ b/custom-edits.patch
-@@ -0,0 +1,30 @@
-+diff --git a/libavcodec/ac4dec.c b/libavcodec/ac4dec.c
-+index 27b8a037e9..ff2ff4739c 100644
-+--- a/libavcodec/ac4dec.c
-++++ b/libavcodec/ac4dec.c
-+@@ -32,6 +32,16 @@
-+ #include "libavutil/opt.h"
-+ 
-+ #include "ac4dec_data.h"
-++
-++static void ac4_vector_fmul_reverse_c(float *dst, const float *src0,
-++                                      const float *src1, int len)
-++{
-++    int i;
-++    src1 += len - 1;
-++    for (i = 0; i < len; i++)
-++        dst[i] = src0[i] * src1[-i];
-++}
-++
-+ #include "avcodec.h"
-+ #include "get_bits.h"
-+ #include "codec_internal.h"
-+@@ -5390,7 +5400,7 @@ static void spectral_synthesis(AC4DecodeContext *s, SubstreamChannel *ssch)
-+                 s->fdsp->vector_fmul_reverse(overlap + nskip_prev,
-+                                              overlap + nskip_prev, swinr, N_prev);
-+             else
-+-                ff_vector_fmul_reverse_c(overlap + nskip_prev,
-++                ac4_vector_fmul_reverse_c(overlap + nskip_prev,
-+                                          overlap + nskip_prev, swinr, N_prev);
-+ 
-+             for (int n = 0; n < N; n++)
-diff --git a/inject-ac4.sh b/inject-ac4.sh
-new file mode 100755
-index 0000000000..b8b5de4b2e
---- /dev/null
-+++ b/inject-ac4.sh
-@@ -0,0 +1,66 @@
-+#!/bin/bash
-+set -e
-+
-+echo "Downloading AC-4 DSP files from librempeg..."
-+curl -sL https://raw.githubusercontent.com/librempeg/librempeg/master/libavcodec/ac4dec.c > libavcodec/ac4dec.c
-+curl -sL https://raw.githubusercontent.com/librempeg/librempeg/master/libavcodec/ac4dec_data.h > libavcodec/ac4dec_data.h
-+curl -sL https://raw.githubusercontent.com/librempeg/librempeg/master/libavcodec/ac4_parser.c > libavcodec/ac4_parser.c
-+
-+echo "Applying custom DSP edits..."
-+git apply custom-edits.patch
-+
-+echo "Applying FFmpeg static glue..."
-+
-+# libavcodec/Makefile
-+if ! grep -q "ac4dec.o" libavcodec/Makefile; then
-+    sed -i '/OBJS-$(CONFIG_AC3_DECODER)/a OBJS-$(CONFIG_AC4_DECODER)             += ac4dec.o' libavcodec/Makefile
-+fi
-+if ! grep -q "ac4_parser.o" libavcodec/Makefile; then
-+    sed -i '/OBJS-$(CONFIG_AC3_PARSER)/a OBJS-$(CONFIG_AC4_PARSER)              += ac4_parser.o' libavcodec/Makefile
-+fi
-+
-+# libavcodec/allcodecs.c
-+if ! grep -q "&ff_ac4_decoder" libavcodec/allcodecs.c; then
-+    sed -i '/&ff_ac3_decoder/a \    extern const FFCodec ff_ac4_decoder;' libavcodec/allcodecs.c
-+fi
-+
-+# libavcodec/kbdwin.h
-+if ! grep -q "av_cold void ff_kbd_window_init" libavcodec/kbdwin.h; then
-+    sed -i 's/void ff_kbd_window_init/av_cold void ff_kbd_window_init/' libavcodec/kbdwin.h
-+fi
-+
-+# libavcodec/parsers.c
-+if ! grep -q "&ff_ac4_parser" libavcodec/parsers.c; then
-+    sed -i '/&ff_ac3_parser/a \    extern const AVCodecParser ff_ac4_parser;' libavcodec/parsers.c
-+fi
-+
-+# libavformat/mpegts.c
-+if ! grep -q "AV_CODEC_ID_AC4.*ATSC 3.0" libavformat/mpegts.c; then
-+    sed -i '/{ 0xac, AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC3 }/a \    { 0xae, AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC4 }, /* ATSC 3.0 */' libavformat/mpegts.c
-+fi
-+if ! grep -q "ac-4.*AVMEDIA_TYPE_AUDIO" libavformat/mpegts.c; then
-+    sed -i '/MKTAG('\''a'\'', '\''c'\'', '\''-'\'', '\''3'\'')/a \    { MKTAG('\''a'\'', '\''c'\'', '\''-'\'', '\''4'\''), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC4 },' libavformat/mpegts.c
-+    sed -i '/MKTAG('\''A'\'', '\''C'\'', '\''-'\'', '\''3'\'')/a \    { MKTAG('\''A'\'', '\''C'\'', '\''-'\'', '\''4'\''), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC4 },' libavformat/mpegts.c
-+fi
-+
-+# DVB Extension Descriptor parsing for ATSC 3.0 AC-4 streams
-+if ! grep -q "ext_desc_tag == 0x15.*AV_CODEC_ID_AC4" libavformat/mpegts.c; then
-+    sed -i '/if (ext_desc_tag < 0)/{
-+n
-+a\
-+        if (st->codecpar->codec_id == AV_CODEC_ID_BIN_DATA &&\
-+            ext_desc_tag == 0x15) {\
-+            st->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;\
-+            st->codecpar->codec_id = AV_CODEC_ID_AC4;\
-+        }
-+    }' libavformat/mpegts.c
-+fi
-+
-+echo "Staging files..."
-+git add libavcodec/ac4dec.c libavcodec/ac4dec_data.h libavcodec/ac4_parser.c
-+git add libavcodec/Makefile libavcodec/allcodecs.c libavcodec/kbdwin.h libavcodec/parsers.c libavformat/mpegts.c
-+
-+if ! git diff --cached --quiet; then
-+    git commit -m "ffmpeg: Inject AC-4 decoder from librempeg"
-+fi
-+echo "AC-4 injection complete."
 diff --git a/libavcodec/Makefile b/libavcodec/Makefile
-index 1410bd8142..9deea30d14 100644
+index 1410bd8142..854d2d9fbb 100644
 --- a/libavcodec/Makefile
 +++ b/libavcodec/Makefile
-@@ -212,6 +212,7 @@ OBJS-$(CONFIG_AAC_MEDIACODEC_DECODER)  += mediacodecdec.o
+@@ -211,6 +211,7 @@ OBJS-$(CONFIG_AAC_ENCODER)             += aacenc.o aaccoder.o aacenctab.o    \
+ OBJS-$(CONFIG_AAC_MEDIACODEC_DECODER)  += mediacodecdec.o
  OBJS-$(CONFIG_AAC_MF_ENCODER)          += mfenc.o mf_utils.o
  OBJS-$(CONFIG_AASC_DECODER)            += aasc.o msrledec.o
- OBJS-$(CONFIG_AC3_DECODER)             += ac3dec_float.o ac3dec_data.o ac3.o \
 +OBJS-$(CONFIG_AC4_DECODER)             += ac4dec.o
+ OBJS-$(CONFIG_AC3_DECODER)             += ac3dec_float.o ac3dec_data.o ac3.o \
                                            kbdwin.o ac3tab.o ac3_channel_layout_tab.o
  OBJS-$(CONFIG_AC3_FIXED_DECODER)       += ac3dec_fixed.o ac3dec_data.o ac3.o \
-                                           kbdwin.o ac3tab.o ac3_channel_layout_tab.o
-@@ -1238,6 +1239,7 @@ OBJS-$(CONFIG_LIBZVBI_TELETEXT_DECODER)   += libzvbi-teletextdec.o ass.o
+@@ -1237,6 +1238,7 @@ OBJS-$(CONFIG_LIBZVBI_TELETEXT_DECODER)   += libzvbi-teletextdec.o ass.o
+ # parsers
  OBJS-$(CONFIG_AAC_LATM_PARSER)         += latm_parser.o
  OBJS-$(CONFIG_AAC_PARSER)              += aac_parser.o aac_ac3_parser.o
- OBJS-$(CONFIG_AC3_PARSER)              += aac_ac3_parser.o ac3tab.o \
 +OBJS-$(CONFIG_AC4_PARSER)              += ac4_parser.o
+ OBJS-$(CONFIG_AC3_PARSER)              += aac_ac3_parser.o ac3tab.o \
                                            ac3_channel_layout_tab.o
  OBJS-$(CONFIG_ADX_PARSER)              += adx_parser.o
- OBJS-$(CONFIG_AHX_PARSER)              += ahx_parser.o
 diff --git a/libavcodec/ac4_parser.c b/libavcodec/ac4_parser.c
 new file mode 100644
 index 0000000000..1ad425f0cf
@@ -8700,41 +8592,76 @@ index 0000000000..1eb24b22f2
 +};
 +
 +#endif /* AVCODEC_AC4DEC_DATA_H */
+diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
+index 695214f192..37907aa0a1 100644
+--- a/libavcodec/allcodecs.c
++++ b/libavcodec/allcodecs.c
+@@ -436,6 +436,7 @@ extern const FFCodec ff_aac_fixed_decoder;
+ extern const FFCodec ff_aac_latm_decoder;
+ extern const FFCodec ff_ac3_encoder;
+ extern const FFCodec ff_ac3_decoder;
++extern const FFCodec ff_ac4_decoder;
+ extern const FFCodec ff_ac3_fixed_encoder;
+ extern const FFCodec ff_ac3_fixed_decoder;
+ extern const FFCodec ff_acelp_kelvin_decoder;
 diff --git a/libavcodec/kbdwin.h b/libavcodec/kbdwin.h
-index 4185c4206f..9c43a6eedf 100644
+index 4185c4206f..2ea35e1bd5 100644
 --- a/libavcodec/kbdwin.h
 +++ b/libavcodec/kbdwin.h
-@@ -32,7 +32,7 @@
-  * @param   alpha   determines window shape
-  * @param   n       size of half window, max FF_KBD_WINDOW_MAX
+@@ -24,7 +24,7 @@
+ /**
+  * Maximum window size for ff_kbd_window_init.
   */
--void ff_kbd_window_init(float *window, float alpha, int n);
--void ff_kbd_window_init_fixed(int32_t *window, float alpha, int n);
-+av_cold void ff_kbd_window_init(float *window, float alpha, int n);
-+av_cold void ff_kbd_window_init_fixed(int32_t *window, float alpha, int n);
+-#define FF_KBD_WINDOW_MAX 1024
++#define FF_KBD_WINDOW_MAX 2048
  
- #endif /* AVCODEC_KBDWIN_H */
+ /**
+  * Generate a Kaiser-Bessel Derived Window.
+diff --git a/libavcodec/parsers.c b/libavcodec/parsers.c
+index 162b96cb69..d5ddeed7af 100644
+--- a/libavcodec/parsers.c
++++ b/libavcodec/parsers.c
+@@ -40,6 +40,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
+ extern const FFCodecParser ff_aac_parser;
+ extern const FFCodecParser ff_aac_latm_parser;
+ extern const FFCodecParser ff_ac3_parser;
++extern const FFCodecParser ff_ac4_parser;
+ extern const FFCodecParser ff_adx_parser;
+ extern const FFCodecParser ff_ahx_parser;
+ extern const FFCodecParser ff_amr_parser;
 diff --git a/libavformat/mpegts.c b/libavformat/mpegts.c
-index 427bb88a3e..9156e34234 100644
+index 427bb88a3e..d0464eb09c 100644
 --- a/libavformat/mpegts.c
 +++ b/libavformat/mpegts.c
-@@ -879,6 +879,7 @@ static const StreamType HLS_SAMPLE_ENC_types[] = {
- static const StreamType REGD_types[] = {
-     { MKTAG('d', 'r', 'a', 'c'), AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_DIRAC },
-     { MKTAG('A', 'C', '-', '3'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC3   },
-+    { MKTAG('A', 'C', '-', '4'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC4 },
-     { MKTAG('A', 'C', '-', '4'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_AC4   },
-     { MKTAG('B', 'S', 'S', 'D'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_S302M },
-     { MKTAG('D', 'T', 'S', '1'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
-@@ -2247,6 +2248,11 @@ int ff_parse_mpeg2_descriptor(AVFormatContext *fc, AVStream *st, int stream_type
+@@ -2247,6 +2247,11 @@ int ff_parse_mpeg2_descriptor(AVFormatContext *fc, AVStream *st, int stream_type
          ext_desc_tag = get8(pp, desc_end);
          if (ext_desc_tag < 0)
              return AVERROR_INVALIDDATA;
 +        if (st->codecpar->codec_id == AV_CODEC_ID_BIN_DATA &&
-+            ext_desc_tag == 0x15) {
++            ext_desc_tag == AC4_DESCRIPTOR_TAG_EXTENSION) {
 +            st->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
 +            st->codecpar->codec_id = AV_CODEC_ID_AC4;
 +        }
          if (st->codecpar->codec_id == AV_CODEC_ID_OPUS &&
              ext_desc_tag == 0x80) { /* User defined (provisional Opus) */
              if (!st->codecpar->extradata) {
+diff --git a/libavformat/mpegts.h b/libavformat/mpegts.h
+index 18f326b8bf..8fa4385e33 100644
+--- a/libavformat/mpegts.h
++++ b/libavformat/mpegts.h
+@@ -209,6 +209,7 @@ https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/
+ 
+ /* ISO/IEC 13818-1 Table 2-109 */
+ #define JXS_VIDEO_DESCRIPTOR         0x14 /* JPEG-XS descriptor */
++#define AC4_DESCRIPTOR_TAG_EXTENSION 0x15
+ #define LCEVC_VIDEO_DESCRIPTOR       0x17 /* LCEVC video descriptor */
+ #define LCEVC_LINKAGE_DESCRIPTOR     0x18 /* LCEVC linkage descriptor */
+ 
+@@ -228,6 +229,7 @@ https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/
+ /* DVB descriptor_tag_extension values from
+    ETSI EN 300 468 Table 109: Possible locations of extended descriptors */
+ #define SUPPLEMENTARY_AUDIO_DESCRIPTOR 0x06
++#define AC4_DESCRIPTOR 0x15
+ 
+ /** see "Dolby Vision Streams Within the MPEG-2 Transport Stream Format"
+ https://professional.dolby.com/siteassets/content-creation/dolby-vision-for-content-creators/dolby-vision-bitstreams-in-mpeg-2-transport-stream-multiplex-v1.2.pdf */
