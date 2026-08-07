@@ -26,6 +26,22 @@ configure_host() {
     "arm")
       # the arm target is special because we specify the subarch. ie armv8a
       cp -a ${PKG_DIR}/targets/arm-libreelec-linux-gnueabihf.json ${PKG_BUILD}/targets/${TARGET_NAME}.json
+      # That spec describes ARMv6, which has no DMB instruction, so LLVM emits
+      # the CP15 barrier `mcr p15, 0, rX, c7, c10, 5` for every acquire, release
+      # and seqcst operation. The encoding is deprecated in ARMv7 and removed in
+      # ARMv8, where it is trap-and-emulated for AArch32 tasks; the trap clears
+      # the exclusive monitor, so any compare_exchange whose barrier lands
+      # between LDREX and STREX retries forever. Release and SeqCst place it
+      # there, Acquire and Relaxed do not, which is why most Rust code survives
+      # while lock-free structures that register a per-thread node - crossbeam
+      # and arc-swap among them - livelock on first use. Tell LLVM about the
+      # real instruction on every subarch that has one; armv6zk genuinely does
+      # not, and keeps the CP15 form.
+      case "${TARGET_NAME}" in
+        armv7*|armv8*)
+          sed -i 's/\("features": "[^"]*\)"/\1,+db"/' ${PKG_BUILD}/targets/${TARGET_NAME}.json
+          ;;
+      esac
       ;;
     "aarch64" | "x86_64")
       cp -a ${PKG_DIR}/targets/${TARGET_NAME}.json ${PKG_BUILD}/targets/${TARGET_NAME}.json
