@@ -10,7 +10,7 @@ PKG_SITE="http://www.kodi.tv"
 # Using local xbmc checkout for development
 PKG_URL="file://${ROOT}/sources/kodi/xbmc-local"
 PKG_SOURCE_NAME="xbmc-local"
-PKG_DEPENDS_TARGET="toolchain JsonSchemaBuilder:host TexturePacker:host Python3 zlib systemd lzo pcre swig:host libass curl fontconfig fribidi tinyxml tinyxml2 libjpeg-turbo freetype libcdio taglib libxml2 libxslt rapidjson sqlite ffmpeg crossguid libfmt lirc libfstrcmp flatbuffers:host flatbuffers libudfread spdlog obu_util libdovi skin.p3i.estuary"
+PKG_DEPENDS_TARGET="toolchain JsonSchemaBuilder:host TexturePacker:host Python3 zlib systemd lzo pcre swig:host libass curl fontconfig fribidi tinyxml tinyxml2 libjpeg-turbo freetype libcdio taglib libxml2 libxslt rapidjson sqlite ffmpeg crossguid libfmt lirc libfstrcmp flatbuffers:host flatbuffers libudfread spdlog obu_util libdovi omniphony skin.p3i.estuary"
 PKG_DEPENDS_UNPACK="commons-lang3 commons-text groovy"
 PKG_DEPENDS_HOST="toolchain"
 PKG_LONGDESC="A free and open source cross-platform media player."

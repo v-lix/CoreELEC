@@ -66,7 +66,35 @@ Development happens on `coreelec-21_local`; `coreelec-21` carries the release st
 
 Clone each repo to the listed path (the branch to check out follows from `PKG_VERSION`/`PKG_GIT_BRANCH` in the respective `package.mk`), or edit the `PKG_URL` in those files to point at your own checkouts.
 
-One-time note: the first build also bootstraps the rust toolchain (for `libdovi`), which adds roughly an hour of host compilation. Subsequent builds reuse it.
+One-time note: the first build also bootstraps the rust toolchain (for `libdovi` and `omniphony`), which adds roughly an hour of host compilation. Subsequent builds reuse it.
+
+### Binaural headphone rendering
+
+Kodi folds a surround soundtrack to stereo with a matrix downmix, which throws the direction away: on headphones every channel ends up inside your head. The `omniphony` package builds the [Omniphony](https://github.com/mgth/Omniphony) spatial audio engine, which Kodi uses instead to place each channel at a fixed position around the listener and render it through a head-related transfer function, so surround channels are heard from beside and behind rather than from within.
+
+`projects/Amlogic-ce/packages/multimedia/omniphony` builds two objects with cargo and installs them into `/usr/lib/kodi/omniphony`, the first location Kodi's loader searches:
+
+| file | role |
+|---|---|
+| `liborender.so.0` | the renderer, opened at runtime with `dlopen` |
+| `libreference_bridge.so` | the decoder bridge that presents host PCM to it |
+
+Together they add roughly 5.8 MB to the image. There is no build-time dependency between Kodi and the engine: Kodi resolves it at runtime and falls back to the ordinary downmix when it is missing, so an image built without this package behaves exactly as before.
+
+The feature stays off until *Settings > System > Audio > Binaural rendering for headphones* is enabled. That switch is greyed out unless the audio output is stereo — which includes S/PDIF and other digital outputs that are always driven in stereo — and while passthrough is on, since an amplifier is then doing the decoding and the listener is on speakers. Turning it on reveals its settings:
+
+| setting | what it does |
+|---|---|
+| Binaural level | Matches the render to the ordinary downmix, so turning the feature on does not also change the volume. The default is set for that, and adjusts itself for *Maintain original volume*. |
+| LFE level | The low-frequency channel, which is fed to both ears as recorded rather than placed. Kodi's *Include LFE when downmixing* does not reach this path, so it has its own control. |
+| Head-related transfer function | The measurements that place the sound: the engine's own, or a SOFA file of your own. Choosing *Personal* asks for the file straight away, and goes back to *Built-in* if you pick none; choosing *Built-in* discards the file you had. |
+| Speaker distance | How far out the virtual speakers sit. |
+| Room simulation | Early reflections, off through three room sizes. The most audible control here. |
+| Reverb amount | The tail after those reflections. |
+
+A personal HRTF must be a free-field HRIR measurement — SOFA convention `SimpleFreeFieldHRIR`. The file is checked and copied into the profile when you pick it, and you are told straight away whether it can be used; one that fails is refused and whatever you had before is kept.
+
+Reading a SOFA file is far too slow to do between two blocks of audio, so the engine never does: it starts every stream on its built-in measurements and swaps yours in a second or two later, once a background thread has finished reading them. Expect the sound to settle shortly after playback starts, and again after a seek.
 
 ## Issues & Support
 
