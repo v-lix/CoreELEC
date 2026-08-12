@@ -2,8 +2,8 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="rust"
-PKG_VERSION="1.93.1"
-PKG_SHA256="4c230a44b3d9c9f3cef950943719f8380058d27c91fda5e36a9a947ef013e01f"
+PKG_VERSION="1.91.1"
+PKG_SHA256="38dce205d39f61571261f0444237a1ce9efecb970e760d8ec4d957af5b445723"
 PKG_LICENSE="MIT"
 PKG_SITE="https://www.rust-lang.org"
 PKG_URL="https://static.rust-lang.org/dist/rustc-${PKG_VERSION}-src.tar.gz"
@@ -33,7 +33,7 @@ configure_host() {
   esac
 
   cat >${PKG_BUILD}/config.toml  <<END
-change-id = 148803
+change-id = 146435
 
 [llvm]
 download-ci-llvm = false
@@ -51,6 +51,10 @@ cc = "${CC}"
 [rust]
 rpath = true
 channel = "stable"
+# CE's llvm:host installs only llvm-config/llvm-objcopy/llvm-tblgen; since 1.9x
+# the bootstrap hard-fails copying absent LLVM_TOOLS from an external LLVM
+# (1.85 silently skipped them), so don't install the llvm-tools component
+llvm-tools = false
 codegen-tests = false
 optimize = true
 download-rustc = false
