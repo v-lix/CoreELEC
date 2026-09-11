@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: v-lix <280294695+v-lix@users.noreply.github.com>
+Date: Thu, 11 Sep 2026 00:00:00 +0000
+Subject: [PATCH] avcodec/dca_xll: recognise the remaining DTS:X extension
+ syncwords
+
+The DTS:X extension is named by the syncword at the dword-aligned end of the
+XLL band data. Upstream tests two values, and 0005 split the second so that
+0xF14000D1 reports plain DTS:X while only 0xF14000D0 reports DTS:X IMAX. Three
+further values - 0xF14000D2, 0xF14000D3 and 0xF14000D4 - match neither test,
+so a stream carrying any of them falls through and is reported as ordinary
+DTS-HD MA. Kodi builds its label from that profile, so those streams arrive
+with no DTS:X label at all.
+
+MediaInfoLib already sorts the whole family the way this patch does. Its
+File_Dts::Extensions2() sets presence_Extended_X for 0x02000850 and for
+0xF14000D1 through 0xF14000D4, and only 0xF14000D0 additionally sets
+presence_Extended_IMAX. That list, D2 included, was written by the same author
+whose earlier reverse engineering 0005 rests on:
+
+  MediaArea/MediaInfoLib#2653, which adds
+    case 0x02000850: case 0xF14000D1: case 0xF14000D2:
+    case 0xF14000D3: case 0xF14000D4:
+        Presence.set(presence_Extended_X);
+  https://github.com/MediaArea/MediaInfoLib/blob/master/Source/MediaInfo/Audio/File_Dts.cpp
+  https://github.com/MediaArea/MediaInfo/issues/717
+  https://github.com/MediaArea/MediaInfo/issues/823
+
+This patch takes the three it treats as plain DTS:X that 0005 did not reach,
+and puts them in the branch 0005 put 0xF14000D1 in.
+
+0xF14000D4 was confirmed against DTS:X Pro samples besides: it appears exactly
+once per XLL frame, dword-aligned where this code already looks, and the
+CRC-protected envelope behind it decodes as five objects over the 7.1 bed and
+four fixed heights. Built against ffmpeg 8.1.2 with 0005 and this patch
+applied in order, ffprobe reports those samples as "DTS-HD MA + DTS:X" where
+it reported "DTS-HD MA" before. No sample was available for 0xF14000D2 or
+0xF14000D3; they rest on the classification above, as 0xF14000D1 did.
+
+Like the rest of the DTS:X detection here, this is reverse engineering rather
+than specification, and carries the same false-positive risk as the syncwords
+already listed.
+---
+ libavcodec/dca_syncwords.h | 3 +++
+ libavcodec/dca_xll.c       | 4 +++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/libavcodec/dca_syncwords.h b/libavcodec/dca_syncwords.h
+--- a/libavcodec/dca_syncwords.h
++++ b/libavcodec/dca_syncwords.h
+@@ -35,6 +35,9 @@
+
+ #define    DCA_SYNCWORD_XLL_X_1              0x02000850U
+ #define    DCA_SYNCWORD_XLL_X_2              0xF14000D1U
++#define    DCA_SYNCWORD_XLL_X_3              0xF14000D2U
++#define    DCA_SYNCWORD_XLL_X_4              0xF14000D3U
++#define    DCA_SYNCWORD_XLL_X_5              0xF14000D4U
+ #define    DCA_SYNCWORD_XLL_X_IMAX           0xF14000D0U
+
+ #endif /* AVCODEC_DCA_SYNCWORDS_H */
+diff --git a/libavcodec/dca_xll.c b/libavcodec/dca_xll.c
+--- a/libavcodec/dca_xll.c
++++ b/libavcodec/dca_xll.c
+@@ -1073,7 +1073,9 @@ static int parse_frame(DCAXllDecoder *s, const uint8_t *data, int size, DCAExssA
+
+         extradata_syncword = show_bits_long(&s->gb, 32);
+
+-        if (extradata_syncword == DCA_SYNCWORD_XLL_X_1 || extradata_syncword == DCA_SYNCWORD_XLL_X_2) {
++        if (extradata_syncword == DCA_SYNCWORD_XLL_X_1 || extradata_syncword == DCA_SYNCWORD_XLL_X_2 ||
++            extradata_syncword == DCA_SYNCWORD_XLL_X_3 || extradata_syncword == DCA_SYNCWORD_XLL_X_4 ||
++            extradata_syncword == DCA_SYNCWORD_XLL_X_5) {
+             s->x_syncword_present = 1;
+         } else if (extradata_syncword == DCA_SYNCWORD_XLL_X_IMAX) {
+             s->x_imax_syncword_present = 1;
