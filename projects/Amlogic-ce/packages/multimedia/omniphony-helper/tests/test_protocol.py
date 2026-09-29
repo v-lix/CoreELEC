@@ -5,11 +5,13 @@ Usage: test_protocol.py <omniphony-helper> <libfake_orender.so>
 """
 
 import os
+import struct
 import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from drive import Helper, OP_CLOSE, OP_FEED, OP_FLUSH, OP_OPEN, ST_INFO, ST_OK
+from drive import (Helper, OP_CLOSE, OP_FEED, OP_FLUSH, OP_HEARD, OP_OPEN, ST_INFO, ST_OK,
+                   ST_PROTOCOL)
 
 
 def wait_for(helper, predicate, polls=500):
@@ -89,5 +91,41 @@ for extra, want in (("codec=truehd\n", "on"), ("codec=eac3\n", "on"),
     h.send(OP_CLOSE)
     rc, stderr = h.finish()
     assert rc == 0, stderr
+
+# HEARD reaches the engine only after an open that asked for it, starting from
+# 0 at the open so the engine holds from the first block. A malformed one is
+# reported and dropped rather than ending the stream.
+h = Helper(helper_path)
+h.send(OP_OPEN, f"lib={library_path}\nheard=on\n".encode())
+wait_for(h, lambda: any(code == ST_OK and text.startswith("open ")
+                         for code, text in h.status))
+opened = next(text for code, text in h.status if code == ST_OK and text.startswith("open "))
+assert " heard=on " in opened, opened
+h.send(OP_HEARD, struct.pack("<q", 123456))
+h.send(OP_HEARD, b"short")
+h.send(OP_HEARD, struct.pack("<q", 250000))
+h.send(OP_CLOSE)
+rc, stderr = h.finish()
+assert rc == 0, stderr
+assert (ST_PROTOCOL, "HEARD carries 5 bytes, not 8") in h.status, h.status
+heard = [line for line in stderr.splitlines() if line.startswith("heard_us=")]
+assert heard == ["heard_us=0", "heard_us=123456", "heard_us=250000"], heard
+
+# Not asked for, or an engine without the option: the open line says off, which
+# is what keeps a host from sending HEARD at all - and one sent anyway changes
+# nothing.
+for extra, env in (("", None), ("heard=on\n", {**os.environ, "FAKE_ORENDER_NO_HEARD": "1"})):
+    h = Helper(helper_path, env=env)
+    h.send(OP_OPEN, f"lib={library_path}\n{extra}".encode())
+    wait_for(h, lambda: any(code == ST_OK and text.startswith("open ")
+                             for code, text in h.status))
+    opened = next(text for code, text in h.status
+                  if code == ST_OK and text.startswith("open "))
+    assert " heard=off " in opened, (extra, opened)
+    h.send(OP_HEARD, struct.pack("<q", 123456))
+    h.send(OP_CLOSE)
+    rc, stderr = h.finish()
+    assert rc == 0, stderr
+    assert "heard_us=" not in stderr, stderr
 
 print("helper protocol: PASS")

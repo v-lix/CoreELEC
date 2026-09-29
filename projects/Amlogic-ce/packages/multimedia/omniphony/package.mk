@@ -2,8 +2,8 @@
 # Copyright (C) 2026-present Team CoreELEC (https://coreelec.org)
 
 PKG_NAME="omniphony"
-PKG_VERSION="a69f591cfdc79da6d5ca6f7db389d75a2c6fae91"
-PKG_SHA256="379e2fb73cd2a6fa495b39759d8cc4feb633507ebce266ebf2f26b6bdb073c1c"
+PKG_VERSION="f08ee183cdc0f2f54e1534b2ca9d9135a7269d3c"
+PKG_SHA256="e4448297a9f51f505b3a062bea92511a60327d8bae22d1ada1d5e9e50f8a488d"
 PKG_LICENSE="GPL-3.0-or-later"
 PKG_SITE="https://github.com/mgth/Omniphony"
 # The fork rather than PKG_SITE. It follows the current upstream interfaces and
@@ -28,13 +28,28 @@ PKG_SITE="https://github.com/mgth/Omniphony"
 #   - orender_hrir_in_use names the HRIR set the binaural path is convolving
 #     with. The helper passes it on as hrir= and the codec shows it as the head
 #     model, so a SOFA file the engine could not load reads Built-in.
+#   - render.managed_host, which the codec writes as kodi into every stream's
+#     config, leaves the engine to Kodi when Omniphony Studio connects: its
+#     edits last for the stream and are never saved or handed on, the output
+#     stays stereo, the render mode, the decode thread and a zero-latency
+#     crossover stay Kodi's, files on the device and the process are off
+#     limits, a refusal tells Studio why, Studio shows the decode thread the
+#     helper forced, and the helper's OPEN never waits for the Studio port
+#     while the previous track's helper still holds it.
+#   - orender_set_option's heard_us says where the listener is. The codec
+#     reports the position the sink is playing through the helper's HEARD,
+#     and the engine holds what it tells Studio about each block until the
+#     listener reaches it, so Studio draws the objects with the sound rather
+#     than up to two seconds ahead of it, the reserve and the sink's buffers
+#     ahead.
 #
 # ABI 8 supplies the upstream height-tier labels, ABI 9 the NUL-terminated
 # orender_source_label query, ABI 10 the decode thread (orender_set_option's
 # `decode_thread`, which the helper turns on for TrueHD and E-AC-3) and
 # orender_drain, ABI 11 the thread's live option and
-# orender_output_packet_pts, and this fork's decoded-rate, decoder-drain and
-# HRIR additions are ABI 12. Every optional symbol is probed with dlsym;
+# orender_output_packet_pts, and this fork's decoded-rate, decoder-drain, HRIR
+# and heard_us additions are ABI 12 - heard_us probed by its answer, which the
+# helper puts on its open line. Every optional symbol is probed with dlsym;
 # major-version mismatch is still fatal. The build produces both orender_ffi
 # and pcm_bridge from this same pin so the C ABI and Rust bridge_api stay
 # paired.

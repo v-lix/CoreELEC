@@ -38,10 +38,12 @@
  *
  *   OPEN  (1)  payload is `key=value` lines, one per line: `lib` (required,
  *              the engine to load), and `config`, `layout`, `bridge`, `codec`,
- *              `rate` and `decode_thread` (`on` or `off`; unset means on for
- *              TrueHD, off otherwise). Must come first. Unknown keys are
- *              ignored, so a newer host can send a key this build does not
- *              know.
+ *              `rate`, `decode_thread` (`on` or `off`; unset means on for
+ *              TrueHD, off otherwise) and `heard` (`on` to send HEARD - see
+ *              there). Must come first. Unknown keys are ignored, so a newer
+ *              host can send a key this build does not know. Answered with a
+ *              status line beginning `open `, which says `heard=on` when HEARD
+ *              may be sent.
  *   FEED  (2)  payload is input for the bridge named in OPEN, passed on
  *              as it is. For the Harletty bridge that is one raw encoded
  *              packet, exactly as it comes off Kodi's stream parser before
@@ -51,6 +53,13 @@
  *              then acknowledge completion.
  *   RESET (4)  no payload. A seek happened: drop decoder and renderer state.
  *   CLOSE (5)  no payload. Tear down and exit 0.
+ *   HEARD (6)  payload is an i64: where the listener is, in the microseconds
+ *              the OMNI frames count, so from 0 after a RESET. The engine
+ *              holds what it tells Omniphony Studio about each block - the
+ *              objects, the meters - until the listener reaches it, so Studio
+ *              shows what is being heard rather than what was rendered for
+ *              the host's buffers ahead of it. Only after an open that said
+ *              `heard=on`: an older helper exits on an op it does not know.
  *
  * Helper to host:
  *
@@ -107,6 +116,7 @@
 #define OP_FLUSH 3
 #define OP_RESET 4
 #define OP_CLOSE 5
+#define OP_HEARD 6
 
 #define ST_OK 0
 #define ST_PROTOCOL 1
@@ -283,6 +293,7 @@ typedef struct
   const char* codec;
   const char* rate;
   const char* decode_thread;
+  const char* heard;
 } OpenArgs;
 
 static void parse_open(char* text, size_t len, OpenArgs* out)
@@ -318,6 +329,8 @@ static void parse_open(char* text, size_t len, OpenArgs* out)
         out->rate = v;
       else if (strcmp(k, "decode_thread") == 0)
         out->decode_thread = v;
+      else if (strcmp(k, "heard") == 0)
+        out->heard = v;
       /* Unknown keys are ignored on purpose: a newer host may send a key this
        * build does not know, and refusing the whole stream over it would be a
        * worse failure than proceeding without it. */
@@ -578,6 +591,9 @@ int main(void)
    * Kept lifetime, a stream that once worked could never be found broken. */
   uint64_t epoch_frames = 0;
   uint64_t epoch_errors = 0;
+  /* Whether the engine holds what it tells Studio until HEARD says the
+   * listener has reached it - see OP_HEARD. */
+  int heard = 0;
   int exit_code = 0;
 
   clear_stream_info(&stream_info);
@@ -724,10 +740,19 @@ int main(void)
           threaded = api.set_option(renderer, "decode_thread", decode_thread) == 0 &&
                      strcmp(decode_thread, "on") == 0;
 
-        emit_status(ST_OK, "open codec=%s rate=%u engine=%u.%u decode_thread=%s",
+        /* The host's buffers put what the engine renders a second or two
+         * ahead of what is heard, and Studio is told about each block as it
+         * is rendered. Asked for, the engine holds that until HEARD says the
+         * listener has reached the block; 0 now, so it holds from the first
+         * one. An engine without the option answers -1 and the open line says
+         * so, which is what keeps the host from sending HEARD at all. */
+        if (a.heard && strcmp(a.heard, "on") == 0 && api.set_option)
+          heard = api.set_option(renderer, "heard_us", "0") == 0;
+
+        emit_status(ST_OK, "open codec=%s rate=%u engine=%u.%u heard=%s decode_thread=%s",
                     a.codec ? a.codec : "(sniffed)", (unsigned)cfg.sample_rate,
                     api.version_major(), api.version_minor ? api.version_minor() : 0,
-                    threaded ? "on" : "off");
+                    heard ? "on" : "off", threaded ? "on" : "off");
         break;
       }
 
@@ -973,6 +998,31 @@ int main(void)
         epoch_errors = 0;
         emit_status(ST_OK, "reset epoch=%u", timeline_epoch);
         break;
+
+      case OP_HEARD:
+      {
+        if (!renderer)
+        {
+          emit_status(ST_STATE, "HEARD before OPEN");
+          exit_code = 5;
+          goto done;
+        }
+        /* Not worth ending the stream over: at worst Studio runs ahead of the
+         * sound until the next one, which is what it did before HEARD. */
+        if (len != 8)
+        {
+          emit_status(ST_PROTOCOL, "HEARD carries %u bytes, not 8", len);
+          break;
+        }
+        if (!heard)
+          break;
+        int64_t us;
+        memcpy(&us, payload, 8);
+        char value[24];
+        snprintf(value, sizeof(value), "%lld", (long long)us);
+        api.set_option(renderer, "heard_us", value);
+        break;
+      }
 
       case OP_CLOSE:
         emit_status(ST_OK, "close frames=%llu decode_errors=%llu",
