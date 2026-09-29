@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -146,11 +147,20 @@ uint32_t orender_hrir_in_use(const OrenderRenderer* renderer, char* out, uint32_
   return n;
 }
 
-/* Knows the one option the helper sets, so the default it picks per codec
- * shows on the open line. */
+/* Knows the options the helper sets: decode_thread, so the default it picks
+ * per codec shows on the open line, and heard_us, which it writes to stderr so
+ * a test can see what reached the engine. FAKE_ORENDER_NO_HEARD makes it an
+ * engine that predates heard_us. */
 int orender_set_option(OrenderRenderer* renderer, const char* key, const char* value)
 {
   (void)renderer;
+  if (strcmp(key, "heard_us") == 0)
+  {
+    if (getenv("FAKE_ORENDER_NO_HEARD"))
+      return -1;
+    fprintf(stderr, "heard_us=%s\n", value);
+    return 0;
+  }
   if (strcmp(key, "decode_thread") != 0)
     return -1;
   return strcmp(value, "on") == 0 || strcmp(value, "off") == 0 ? 0 : -2;
