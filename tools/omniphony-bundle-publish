@@ -252,7 +252,7 @@ DIRTY="$(git -C "${ROOT}" status --porcelain -- projects/Amlogic-ce/packages/mul
 python3 - "${TAG}" "${TARGET}" "${TMP}/notes.md" > "${TMP}/create.json" <<'EOF'
 import json, sys
 tag, target, notes = sys.argv[1], sys.argv[2], open(sys.argv[3]).read()
-body = {"tag_name": tag, "name": tag, "body": notes, "draft": True, "make_latest": "false"}
+body = {"tag_name": tag, "name": tag, "body": notes, "draft": True}
 if target:
     body["target_commitish"] = target
 print(json.dumps(body))
@@ -271,8 +271,9 @@ if [ -n "${DIGEST}" ] && [ "${DIGEST}" != "sha256:${SHA}" ]; then
   die "GitHub stored ${DIGEST}, not sha256:${SHA}; release ${TAG} is left as a draft"
 fi
 
-say "publishing ${TAG}"
-echo '{"draft": false, "make_latest": "false"}' > "${TMP}/publish.json"
+# The new bundle takes the repository's "Latest" label from the one before it.
+say "publishing ${TAG} as the latest release"
+echo '{"draft": false, "make_latest": "true"}' > "${TMP}/publish.json"
 api PATCH "${API}/repos/${REPO}/releases/${RELEASE_ID}" "${TMP}/publish.json" > "${TMP}/published.json"
 
 # --- 4. the check ----------------------------------------------------------
