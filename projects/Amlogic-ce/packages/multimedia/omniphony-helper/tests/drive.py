@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Phase 1 acceptance harness for omniphony-helper.
+"""A client of omniphony-helper's framed protocol, for its tests.
 
-Speaks the helper's framed protocol so the checks in test_phase1.py can drive
-the real helper, engine and PCM bridge with bytes they make themselves - no
-soundtrack required, and so nothing here depends on files that cannot be
-shipped.
+Speaks the protocol so test_real_engine.py can drive the real helper, engine
+and PCM bridge, and test_protocol.py the helper against a fake engine, with
+bytes they make themselves - no soundtrack required, so nothing here depends
+on files that cannot be shipped.
 
 This is a test tool, not shipped code.
 """

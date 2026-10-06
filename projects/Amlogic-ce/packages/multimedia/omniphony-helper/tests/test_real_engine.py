@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Run the Phase 1 acceptance checks and print a pass/fail table.
+"""Drive the real helper, engine and PCM bridge, and print a pass/fail table.
 
-    test_phase1.py <liborender.so> <libpcm_bridge.so>
+    test_real_engine.py <liborender.so> <libpcm_bridge.so>
 
-Every check drives the real helper, the real engine and the real PCM bridge
-with bytes this script makes itself: an OPCM stream header and a synthesised
-tone. Nothing here needs a soundtrack, which is why nothing here is skipped -
-the encoded test streams this used to want are commercial audio that cannot
-live in the tree, so the checks that needed them could never be run by anyone
-who had not been handed the files privately.
+The protocol test (test_protocol.py) runs the helper against a fake engine;
+this runs it against the engine and bridge the box ships, with bytes it
+makes itself: an OPCM stream header and a synthesised tone. Nothing here
+needs a soundtrack, and anyone with the built libraries can run all of it
+but the grid of an HRTF set, which needs a set (OMNI_HRTF) and says so when
+it is skipped.
 
-The PCM bridge rather than the object bridge for the same reason: it accepts
-audio a test can generate, so what is exercised end to end is the helper's
-framing, the engine's construction at a named rate, and the reset boundary the
-host relies on - the parts that are not codec-specific and were never what the
-soundtracks were proving.
+The PCM bridge rather than the object bridge because it accepts audio a test
+can generate. What is exercised end to end is the helper's refusal of bad
+input, its framing, the engine's construction at a named rate, the reset
+boundary the host relies on, and the decoded rate the stream line reports -
+the parts that are not codec-specific.
 
     OMNI_HELPER   the helper binary to run. Not in the tree - it is built by
                   package.mk, or by hand:
@@ -22,14 +22,20 @@ soundtracks were proving.
                          -o omniphony-helper ../sources/omniphony-helper.c -ldl
                   Defaults to ./omniphony-helper.
     OMNI_CONFIG   the engine's config. Defaults to direct.yaml beside this.
+    OMNI_HRTF     a SOFA HRTF set, for the grid built when one is chosen (the
+                  engine repository's renderer/tests/sofa/tester.sofa will do);
+                  without it only the refusal of a file that is none is run.
     OMNI_RATE     the rate to open the renderer at. Defaults to 48000. The
                   engine builds its head model at this rate, and every rate but
                   48000 resamples it first, so a non-default value here is also
                   a check that the helper survives the slow open.
 """
 import os
+import shutil
+import subprocess
 import struct
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -295,6 +301,131 @@ lines = stream_lines(h)
 check(bool(lines) and all(t.rfind("bed=") > t.rfind("rate=") for t in lines),
       "rate= comes before bed=, so bed= is still read to end of line",
       lines[-1] if lines else "no stream line")
+
+# ---- 5. the override template composes on this engine -------------------
+print()
+print("=" * 74)
+print(" 5. the override template composes on this engine")
+print("=" * 74)
+
+
+def key_paths(text):
+    """Every key path of a block-style YAML document, list items aside."""
+    paths, stack = set(), []
+    for line in text.splitlines():
+        content = line.strip()
+        if not content or content.startswith("#") or content.startswith("-") \
+                or ":" not in content:
+            continue
+        indent = len(line) - len(line.lstrip())
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        key = content.split(":", 1)[0].strip()
+        paths.add(".".join([k for _, k in stack] + [key]))
+        stack.append((indent, key))
+    return paths
+
+
+def compose(patch_text):
+    work = tempfile.mkdtemp(prefix="omni-compose-")
+    base, patch, out = (os.path.join(work, n) for n in ("render.yaml", "config.yaml", "out.yaml"))
+    with open(base, "w") as f:
+        f.write("render:\n  master_gain: -12.5\n  auto_gain: false\n  binaural:\n"
+                "    output_mode: binaural\n    hrir_source: saf\n")
+    with open(patch, "w") as f:
+        f.write(patch_text)
+    # The filled template names two files; the composition checks they exist.
+    for name in ("Pulse.sofa", "chunked_multispeaker_brir.sofa"):
+        open(os.path.join(work, name), "wb").close()
+    run = subprocess.run([EXE, "--compose", LIB, base, patch, out], capture_output=True,
+                         text=True, env=env())
+    written = os.path.exists(out)
+    shutil.rmtree(work)
+    return run.returncode, run.stdout.strip(), written
+
+
+TEMPLATE = os.environ.get("OMNI_TEMPLATE",
+                          os.path.join(HERE, "..", "..", "omniphony", "config",
+                                       "config.example.yaml"))
+with open(TEMPLATE) as f:
+    template = f.read()
+with open(os.path.join(HERE, "config.filled.yaml")) as f:
+    filled = f.read()
+
+rc, line, written = compose(template)
+check(rc == 0 and line == "status=none keys=0 layout_set=0 decode_thread_set=0"
+      and not written, "as shipped, every value null, it changes nothing", line)
+rc, line, written = compose(filled)
+check(rc == 0 and line.startswith("status=applied keys=")
+      and line.endswith("layout_set=1 decode_thread_set=1") and written,
+      "filled in with its documented values, every key applies", line)
+template_keys = key_paths(template)
+filled_keys = {k for k in key_paths(filled) if not k.startswith("render.current_layout.")}
+check(template_keys == filled_keys and len(template_keys) > 30,
+      "the filled fixture holds exactly the template's keys",
+      f"{len(template_keys)} keys; differ: {sorted(template_keys ^ filled_keys)[:6]}")
+
+# ---- 6. an HRTF set's grid is built when it is chosen ----------------------
+print()
+print("=" * 74)
+print(" 6. an HRTF set's grid is built when it is chosen, and a stream reads it")
+print("=" * 74)
+
+work = tempfile.mkdtemp(prefix="omni-grid-")
+# As Kodi names them: one file per stream rate, in kHz.
+grid = os.path.join(work, f"hrtf{RATE // 1000}.grid")
+
+
+def prepare_hrtf(sofa):
+    run = subprocess.run([EXE, "--prepare-hrtf", LIB, sofa, grid, str(RATE), "1"],
+                         capture_output=True, text=True, env=env())
+    return run.returncode, run.stdout.strip()
+
+
+not_sofa = os.path.join(work, "not.sofa")
+with open(not_sofa, "wb") as f:
+    f.write(b"\x89HDF\r\n\x1a\n" + bytes(4096))
+rc, line = prepare_hrtf(not_sofa)
+check(rc == 1 and line.startswith("failed reason=unusable ") and not os.path.exists(grid),
+      "a file that is no HRTF set is refused, nothing kept", line[:60])
+
+# A real set is not something a test can make, so it is the caller's: the
+# engine repository's renderer/tests/sofa/tester.sofa will do.
+HRTF = os.environ.get("OMNI_HRTF")
+if HRTF:
+    sofa = os.path.join(work, "hrtf.sofa")
+    shutil.copyfile(HRTF, sofa)
+    rc, line = prepare_hrtf(sofa)
+    check(rc == 0 and line.startswith("prepared grid=built ") and os.path.exists(grid),
+          "the set's grid is built and kept", line)
+    kept = os.stat(grid).st_ino
+    rc, line = prepare_hrtf(sofa)
+    check(rc == 0 and line.startswith("prepared grid=kept ") and os.stat(grid).st_ino == kept,
+          "chosen again, it is found kept", line)
+
+    config = os.path.join(work, "render.yaml")
+    with open(config, "w") as f:
+        f.write(f"render:\n  binaural:\n    output_mode: binaural\n"
+                f"    hrir_source: sofa\n    hrtf_sofa_path: '{sofa}'\n"
+                f"    hrtf_grid_cache: {{ path: '{os.path.join(work, 'hrtf{khz}.grid')}', "
+                f"diffuse_field_eq: true }}\n")
+    h = Helper(EXE, env())
+    h.send(OP_OPEN, open_payload(LIB, config, BRIDGE, rate=RATE))
+    h.send(OP_FEED, opcm_header(CHANNELS, RATE))
+    for i in range(OPEN_POLLS):
+        feed_pcm(h, BLOCK, start=i * BLOCK)
+        if any(" hrir=sofa " in t for t in stream_lines(h)):
+            break
+        time.sleep(OPEN_POLL_S)
+    h.send(OP_CLOSE)
+    h.finish()
+    heard = [t for t in stream_lines(h) if " hrir=" in t]
+    check(any(" hrir=sofa " in t for t in heard) and os.stat(grid).st_ino == kept,
+          "the first stream plays the set from that grid, unwritten",
+          heard[-1][:60] if heard else "no stream line")
+else:
+    print("  (OMNI_HRTF not set: the build and the stream reading it not exercised)")
+shutil.rmtree(work)
 
 print()
 print("=" * 74)

@@ -1,4 +1,17 @@
+/* A stand-in engine for test_protocol.py. Built twice:
+ *
+ *   cc -shared -fPIC -I<orender_ffi/include> -o libfake_orender.so fake_orender.c
+ *   cc -shared -fPIC -I<orender_ffi/include> -DFAKE_NO_ROOM \
+ *      -o libfake_orender_noroom.so fake_orender.c
+ *
+ * The second is an engine from before rooms: no orender_brir_prepare,
+ * orender_brir_state, orender_compose_config, orender_sofa_describe,
+ * orender_hrtf_prepare,
+ * render path or latency query. With
+ * FAKE_ORENDER_LOG set, orender_create and orender_set_option append what
+ * they were handed to that file, one line each. */
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,6 +23,17 @@ typedef struct
   int drained;
   int source_present;
 } FakeRenderer;
+
+static void fake_log(const char* fmt, const char* a, const char* b)
+{
+  const char* path = getenv("FAKE_ORENDER_LOG");
+  FILE* f = path ? fopen(path, "a") : NULL;
+  if (!f)
+    return;
+  fprintf(f, fmt, a ? a : "(null)", b ? b : "(null)");
+  fputc('\n', f);
+  fclose(f);
+}
 
 uint32_t orender_version_major(void)
 {
@@ -23,7 +47,7 @@ uint32_t orender_version_minor(void)
 
 OrenderRenderer* orender_create(const OrenderConfig* config)
 {
-  (void)config;
+  fake_log("create config=%s layout=%s", config->config_yaml_path, config->speaker_layout_path);
   FakeRenderer* r = (FakeRenderer*)calloc(1, sizeof(*r));
   if (r)
   {
@@ -151,10 +175,193 @@ uint32_t orender_hrir_in_use(const OrenderRenderer* renderer, char* out, uint32_
 int orender_set_option(OrenderRenderer* renderer, const char* key, const char* value)
 {
   (void)renderer;
+  fake_log("set_option %s=%s", key, value);
   if (strcmp(key, "decode_thread") != 0)
     return -1;
-  return strcmp(value, "on") == 0 || strcmp(value, "off") == 0 ? 0 : -2;
+  return strcmp(value, "on") == 0 || strcmp(value, "off") == 0 || strcmp(value, "live") == 0
+             ? 0
+             : -2;
 }
+
+#ifndef FAKE_NO_ROOM
+/* The room loads off the audio thread a moment into the stream: loading
+ * while the first stream's frames come out, resident from the next FEED on,
+ * and the convolution's latency with it - the change the helper must pass on. */
+int orender_brir_state(const OrenderRenderer* renderer)
+{
+  const FakeRenderer* r = (const FakeRenderer*)renderer;
+  return r->source_present ? 1 : 2;
+}
+
+uint64_t orender_output_latency_samples(const OrenderRenderer* renderer)
+{
+  const FakeRenderer* r = (const FakeRenderer*)renderer;
+  return r->source_present ? 0 : 127;
+}
+
+/* The render follows the room: its loudspeakers cascaded for the stand-in
+ * while it loads, then the room itself. */
+uint32_t orender_render_path(const OrenderRenderer* renderer, char* out, uint32_t cap)
+{
+  const FakeRenderer* r = (const FakeRenderer*)renderer;
+  const char* path = r->source_present ? "cascade:3" : "room:3";
+  const uint32_t n = (uint32_t)strlen(path);
+  if (out && cap > n)
+    memcpy(out, path, n + 1);
+  return n;
+}
+
+static int fake_report(char* out, uint32_t cap, const char* text)
+{
+  if (out && cap)
+    snprintf(out, cap, "%s", text);
+  return 0;
+}
+
+/* A patch reading "reject" is refused, an empty one sets nothing, anything
+ * else applies, setting the layout and the decode thread. */
+int orender_compose_config(const char* base_path,
+                           const char* patch_path,
+                           const char* patch_dir,
+                           const char* out_path,
+                           char* report,
+                           uint32_t cap)
+{
+  (void)patch_dir;
+  if (!base_path || !patch_path || !out_path)
+    return -3;
+  FILE* f = fopen(patch_path, "r");
+  char patch[256] = "";
+  const size_t n = f ? fread(patch, 1, sizeof(patch) - 1, f) : 0;
+  if (f)
+    fclose(f);
+  patch[n] = '\0';
+  if (strstr(patch, "reject"))
+  {
+    fake_report(report, cap,
+                "status=rejected keys=1 layout_set=0 decode_thread_set=0 reason=fake: "
+                "the patch says reject");
+    return -1;
+  }
+  if (n == 0)
+  {
+    fake_report(report, cap, "status=none keys=0 layout_set=0 decode_thread_set=0");
+    return 0;
+  }
+  FILE* out = fopen(out_path, "w");
+  if (!out)
+    return -2;
+  fprintf(out, "composed from %s and %s\n", base_path, patch_path);
+  fclose(out);
+  fake_report(report, cap, "status=applied keys=2 layout_set=1 decode_thread_set=1");
+  return 1;
+}
+
+/* Bytes starting "BAD" are not a room; anything else prepares, and the
+ * summary ends with the source it was given. */
+int orender_brir_prepare(const uint8_t* sofa,
+                         uintptr_t len,
+                         const char* out_path,
+                         const char* source,
+                         char* summary,
+                         uint32_t cap)
+{
+  if (!sofa || !out_path || !source)
+    return -3;
+  if (len >= 3 && memcmp(sofa, "BAD", 3) == 0)
+  {
+    fake_report(summary, cap, "fake: not a room response");
+    return -1;
+  }
+  FILE* out = fopen(out_path, "wb");
+  if (!out)
+  {
+    fake_report(summary, cap, "fake: cannot write");
+    return -2;
+  }
+  fwrite(sofa, 1, len, out);
+  fclose(out);
+  char line[512];
+  snprintf(line, sizeof(line),
+           "emitters=3 orientations=1 seconds=0.250 rate=48000 bytes=%lu names=FL,FR,C "
+           "conventions=MultiSpeakerBRIR source=%.200s",
+           (unsigned long)len, source);
+  fake_report(summary, cap, line);
+  return 0;
+}
+
+/* A set whose file starts "BAD" is refused; otherwise the grid file holds
+ * the rate and setting, and one that already does is kept. */
+int orender_hrtf_prepare(const char* sofa_path,
+                         const char* grid_path,
+                         uint32_t sample_rate,
+                         int diffuse_field_eq,
+                         char* summary,
+                         uint32_t cap)
+{
+  if (!sofa_path || !grid_path)
+    return -3;
+  char head[4] = "";
+  FILE* in = fopen(sofa_path, "rb");
+  const size_t got = in ? fread(head, 1, sizeof(head), in) : 0;
+  if (in)
+    fclose(in);
+  if (!in || (got >= 3 && memcmp(head, "BAD", 3) == 0))
+  {
+    fake_report(summary, cap, "fake: not an HRTF set");
+    return -1;
+  }
+  char want[64];
+  snprintf(want, sizeof(want), "grid %u %d", sample_rate, diffuse_field_eq);
+  char have[64] = "";
+  FILE* grid = fopen(grid_path, "rb");
+  if (grid)
+  {
+    have[fread(have, 1, sizeof(have) - 1, grid)] = '\0';
+    fclose(grid);
+    if (strcmp(have, want) == 0)
+    {
+      fake_report(summary, cap, "grid=kept bytes=16");
+      return 1;
+    }
+  }
+  grid = fopen(grid_path, "wb");
+  if (!grid)
+  {
+    fake_report(summary, cap, "fake: cannot write");
+    return -2;
+  }
+  fputs(want, grid);
+  fclose(grid);
+  fake_report(summary, cap, "grid=built seconds=0.100 bytes=16");
+  return 0;
+}
+
+/* Bytes starting "BAD" are no SOFA file, "HRTF" an HRTF set, anything else
+ * a room. */
+int orender_sofa_describe(const uint8_t* sofa, uintptr_t len, char* out, uint32_t cap)
+{
+  if (!sofa || !out)
+    return -3;
+  if (len >= 3 && memcmp(sofa, "BAD", 3) == 0)
+  {
+    fake_report(out, cap, "reason=fake: not a SOFA file");
+    return -1;
+  }
+  if (len >= 4 && memcmp(sofa, "HRTF", 4) == 0)
+  {
+    fake_report(out, cap,
+                "hrtf=yes room=no prepared=no conventions=SimpleFreeFieldHRIR measurements=2 "
+                "receivers=2 emitters=1 samples=256 rate=48000 reason=fake: one direction each");
+    return 1;
+  }
+  fake_report(out, cap,
+              "hrtf=no room=yes prepared=no conventions=MultiSpeakerBRIR measurements=1 "
+              "receivers=2 emitters=3 samples=12000 rate=48000 orientations=1 speakers=3 "
+              "names=FL,FR,C reason=fake: 3 loudspeakers in every measurement");
+  return 2;
+}
+#endif
 
 int orender_drain(OrenderRenderer* renderer,
                   float* out,
